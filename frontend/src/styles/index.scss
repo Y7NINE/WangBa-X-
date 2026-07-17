@@ -1,0 +1,225 @@
+// 全局样式
+:root {
+  --primary-color: #409eff;
+  --success-color: #67c23a;
+  --warning-color: #e6a23c;
+  --danger-color: #f56c6c;
+  --info-color: #909399;
+  
+  --bg-color: #f5f7fa;
+  --sidebar-bg: #304156;
+  --sidebar-text: #bfcbd9;
+  --sidebar-active-text: #409eff;
+}
+
+// 电竞风格暗色主题
+.dark-theme {
+  --bg-color: #1a1a2e;
+  --sidebar-bg: #16213e;
+  --sidebar-text: #a0aec0;
+  --sidebar-active-text: #00d9ff;
+}
+
+// 布局样式
+.layout-container {
+  height: 100vh;
+  display: flex;
+}
+
+.sidebar {
+  width: 220px;
+  background: var(--sidebar-bg);
+  color: var(--sidebar-text);
+  transition: width 0.3s;
+  
+  &.collapsed {
+    width: 64px;
+  }
+  
+  .logo {
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: bold;
+    color: #fff;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  
+  .el-menu {
+    border-right: none;
+  }
+}
+
+.main-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.header {
+  height: 60px;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 21, 41, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+}
+
+.content {
+  flex: 1;
+  padding: 20px;
+  background: var(--bg-color);
+  overflow-y: auto;
+}
+
+// 座位图样式
+.seat-map {
+  display: grid;
+  gap: 10px;
+  padding: 20px;
+  
+  .seat {
+    width: 80px;
+    height: 80px;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 12px;
+    
+    &.online {
+      background: #67c23a;
+      color: #fff;
+    }
+    
+    &.offline {
+      background: #909399;
+      color: #fff;
+    }
+    
+    &.fault {
+      background: #f56c6c;
+      color: #fff;
+      animation: fault-blink 1s ease-in-out infinite;
+    }
+    
+    &.dirty {
+      background: #e6a23c;
+      color: #fff;
+    }
+    
+    &.cleaning {
+      background: #409eff;
+      color: #fff;
+    }
+    
+    &:hover {
+      transform: scale(1.05);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+  }
+}
+
+@keyframes fault-blink {
+  0%, 100% {
+    opacity: 1;
+    box-shadow: 0 0 10px rgba(245, 108, 108, 0.5);
+  }
+  50% {
+    opacity: 0.8;
+    box-shadow: 0 0 20px rgba(245, 108, 108, 0.8);
+  }
+}
+
+// 告警面板样式
+.alert-panel {
+  background: #fff;
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  
+  .alert-item {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    margin-bottom: 8px;
+    border-radius: 6px;
+    border-left: 4px solid;
+    
+    &.p0 {
+      background: #fef0f0;
+      border-color: #f56c6c;
+    }
+    
+    &.p1 {
+      background: #fdf6ec;
+      border-color: #e6a23c;
+    }
+    
+    &.p2 {
+      background: #f0f9ff;
+      border-color: #409eff;
+    }
+    
+    &.p3 {
+      background: #f4f4f5;
+      border-color: #909399;
+    }
+  }
+}
+
+// 卡片样式
+.dashboard-card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    
+    .title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #303133;
+    }
+  }
+  
+  .card-value {
+    font-size: 32px;
+    font-weight: bold;
+    color: var(--primary-color);
+  }
+  
+  .card-label {
+    font-size: 14px;
+    color: #909399;
+    margin-top: 8px;
+  }
+}
+
+// 按钮样式增强
+.neon-btn {
+  background: linear-gradient(45deg, #00d9ff, #0051ff);
+  border: none;
+  color: #fff;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: all 0.3s;
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 217, 255, 0.4);
+  }
+}

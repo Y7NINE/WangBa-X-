@@ -1,0 +1,27 @@
+﻿# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build
+dist/
+.vite/
+
+# Environment
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+backend.log
+backend_error.log
+
+# Database
+*.db

@@ -1,0 +1,64 @@
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { User } from './user.entity';
+
+@Injectable()
+export class UserService {
+  constructor(
+    @InjectRepository(User)
+    private userRepository: Repository<User>,
+  ) {}
+
+  async findAll(): Promise<User[]> {
+    return this.userRepository.find({ order: { createdAt: 'DESC' } });
+  }
+
+  async findById(id: number): Promise<User> {
+    const user = await this.userRepository.findOne({ where: { id } });
+    if (!user) {
+      throw new NotFoundException('用户不存在');
+    }
+    return user;
+  }
+
+  async findByPhone(phone: string): Promise<User | null> {
+    return this.userRepository.findOne({ where: { phone } });
+  }
+
+  async findByOpenid(openid: string): Promise<User | null> {
+    return this.userRepository.findOne({ where: { openid } });
+  }
+
+  async create(data: Partial<User>): Promise<User> {
+    const user = this.userRepository.create(data);
+    return this.userRepository.save(user);
+  }
+
+  async updateBalance(id: number, balance: number): Promise<void> {
+    await this.userRepository.update(id, { balance });
+  }
+
+  async addCredits(id: number, credits: number): Promise<void> {
+    const user = await this.findById(id);
+    user.credits += credits;
+    await this.userRepository.save(user);
+  }
+
+  async updateMemberLevel(id: number): Promise<void> {
+    const user = await this.findById(id);
+    
+    // 根据累计消费更新会员等级
+    if (user.totalSpent >= 10000) {
+      user.memberLevel = 'diamond';
+    } else if (user.totalSpent >= 5000) {
+      user.memberLevel = 'gold';
+    } else if (user.totalSpent >= 2000) {
+      user.memberLevel = 'silver';
+    } else {
+      user.memberLevel = 'normal';
+    }
+    
+    await this.userRepository.save(user);
+  }
+}
