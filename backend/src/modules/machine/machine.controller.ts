@@ -1,6 +1,7 @@
 import { Controller, Get, Param, Patch, Body, Query, UseGuards, SetMetadata } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { MachineService } from './machine.service';
+import { StaffGuard } from '../auth/staff.guard';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @ApiTags('机器管理')
@@ -29,7 +30,7 @@ export class MachineController {
   }
 
   @Patch(':id/status')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, StaffGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: '更新机器状态（需认证）' })
   updateStatus(@Param('id') id: string, @Body('status') status: string) {

@@ -1,3 +1,4 @@
+import { EventsModule } from '../../common/gateway/events.module';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { FaultService } from './fault.service';
@@ -10,6 +11,7 @@ import { MachineModule } from '../machine/machine.module';
   imports: [
     TypeOrmModule.forFeature([FaultTicket, FaultType]),
     MachineModule,
+    EventsModule,
   ],
   controllers: [FaultController],
   providers: [FaultService],

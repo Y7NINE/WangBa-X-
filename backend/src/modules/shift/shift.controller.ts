@@ -1,11 +1,12 @@
 import { Controller, Get, Post, Body, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ShiftService } from './shift.service';
+import { StaffGuard } from '../auth/staff.guard';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @ApiTags('交接班')
 @Controller('shifts')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, StaffGuard)
 @ApiBearerAuth()
 export class ShiftController {
   constructor(private shiftService: ShiftService) {}

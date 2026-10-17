@@ -5,11 +5,13 @@ import { User } from '../modules/user/user.entity';
 import { Area } from '../modules/area/area.entity';
 import { Machine } from '../modules/machine/machine.entity';
 import { FaultType } from '../modules/fault/fault-type.entity';
+import { Session } from '../modules/billing/session.entity';
+import { Transaction } from '../modules/billing/transaction.entity';
 
 const dataSource = new DataSource({
   type: 'better-sqlite3',
   database: 'netcafe.db',
-  entities: [Staff, User, Area, Machine, FaultType],
+  entities: [Staff, User, Area, Machine, FaultType, Session, Transaction],
   synchronize: true,
 });
 
@@ -20,7 +22,7 @@ async function seed() {
   // 创建默认管理员
   const staffRepo = dataSource.getRepository(Staff);
   const existingAdmin = await staffRepo.findOne({ where: { username: 'admin' } });
-  
+
   if (!existingAdmin) {
     const hashedPassword = await bcrypt.hash('admin123', 10);
     const admin = staffRepo.create({
@@ -38,7 +40,7 @@ async function seed() {
   // 创建测试用户
   const userRepo = dataSource.getRepository(User);
   const userCount = await userRepo.count();
-  
+
   if (userCount === 0) {
     const users = userRepo.create([
       { nickname: '张三', phone: '13800138001', balance: 50, credits: 1200, memberLevel: 'gold', totalSpent: 3500 },
@@ -56,7 +58,7 @@ async function seed() {
   // 创建默认区域
   const areaRepo = dataSource.getRepository(Area);
   const areaCount = await areaRepo.count();
-  
+
   if (areaCount === 0) {
     const areas = areaRepo.create([
       { name: '竞技区', description: '高端电竞设备', pricePerHour: 15, sortOrder: 1 },
@@ -70,7 +72,7 @@ async function seed() {
   // 创建默认机器
   const machineRepo = dataSource.getRepository(Machine);
   const machineCount = await machineRepo.count();
-  
+
   if (machineCount === 0) {
     const machinesData: any[] = [];
     for (let i = 1; i <= 5; i++) {
@@ -79,14 +81,17 @@ async function seed() {
     for (let i = 1; i <= 5; i++) {
       machinesData.push({ id: `B-${String(i).padStart(2, '0')}`, areaId: 2, status: 'offline' });
     }
+    for (let i = 1; i <= 6; i++) {
+      machinesData.push({ id: `C-${String(i).padStart(2, '0')}`, areaId: 3, status: 'offline' });
+    }
     await machineRepo.save(machinesData);
-    console.log('默认机器已创建: A-01~A-05, B-01~B-05');
+    console.log('默认机器已创建: A-01~A-05, B-01~B-05, C-01~C-06');
   }
 
   // 创建故障类型
   const faultTypeRepo = dataSource.getRepository(FaultType);
   const faultCount = await faultTypeRepo.count();
-  
+
   if (faultCount === 0) {
     const faultTypes = faultTypeRepo.create([
       { id: 'mouse', name: '鼠标故障', category: 'peripheral', defaultPriority: 'P2', timeoutMinutes: 10 },
@@ -100,6 +105,58 @@ async function seed() {
     ]);
     await faultTypeRepo.save(faultTypes);
     console.log('故障类型已创建');
+  }
+
+  // 演示用历史会话 + 消费交易（让报表营收可自证）
+  const sessionRepo = dataSource.getRepository(Session);
+  const txRepo = dataSource.getRepository(Transaction);
+  const sessionCount = await sessionRepo.count();
+  if (sessionCount === 0) {
+    const demoUsers = await userRepo.find({ take: 5 });
+    const demoMachines = await machineRepo.find();
+    const samples: Array<{ userId: number; machineId: string; hours: number; rate: number }> = [
+      { userId: demoUsers[0].id, machineId: 'A-01', hours: 3, rate: 15 },
+      { userId: demoUsers[1].id, machineId: 'A-02', hours: 2, rate: 15 },
+      { userId: demoUsers[2].id, machineId: 'B-01', hours: 4, rate: 10 },
+      { userId: demoUsers[3].id, machineId: 'C-01', hours: 1.5, rate: 20 },
+      { userId: demoUsers[4].id, machineId: 'A-03', hours: 2.5, rate: 15 },
+    ];
+    for (let d = 6; d >= 1; d--) {
+      for (const s of samples) {
+        if (!demoMachines.find((m) => m.id === s.machineId)) continue;
+        const start = new Date(Date.now() - d * 86400000);
+        start.setHours(14, 0, 0, 0);
+        const end = new Date(start.getTime() + s.hours * 3600000);
+        const minutes = Math.round(s.hours * 60);
+        const amount = Math.round(s.hours * s.rate * 100) / 100;
+        const sess = await sessionRepo.save(
+          sessionRepo.create({
+            userId: s.userId,
+            machineId: s.machineId,
+            startTime: start,
+            endTime: end,
+            duration: minutes,
+            amount,
+            status: 'completed',
+          }),
+        );
+        const user = await userRepo.findOne({ where: { id: s.userId } });
+        const balanceAfter = Math.round((Number(user!.balance) - amount) * 100) / 100;
+        await userRepo.update(s.userId, { balance: balanceAfter });
+        await txRepo.save(
+          txRepo.create({
+            userId: s.userId,
+            type: 'consume',
+            amount,
+            balanceAfter,
+            paymentMethod: 'balance',
+            referenceId: String(sess.id),
+            description: `演示上机 ${s.machineId} ${minutes}分钟`,
+          }),
+        );
+      }
+    }
+    console.log('演示会话与消费交易已创建（近 6 天）');
   }
 
   console.log('数据初始化完成!');

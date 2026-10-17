@@ -1,11 +1,12 @@
 import { Controller, Get, Post, Patch, Param, Body, UseGuards, Request } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { CleaningService } from './cleaning.service';
+import { StaffGuard } from '../auth/staff.guard';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @ApiTags('保洁管理')
 @Controller('cleaning')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, StaffGuard)
 @ApiBearerAuth()
 export class CleaningController {
   constructor(private cleaningService: CleaningService) {}

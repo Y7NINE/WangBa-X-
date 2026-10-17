@@ -68,6 +68,20 @@ services:
     networks:
       - netcafe-network
 
+  # 用户端服务
+  customer:
+    build:
+      context: ./customer
+      dockerfile: Dockerfile
+    container_name: netcafe-customer
+    restart: always
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    networks:
+      - netcafe-network
+
 volumes:
   postgres_data:
   redis_data:

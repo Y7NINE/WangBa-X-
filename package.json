@@ -1,0 +1,16 @@
+{
+  "name": "wangba-x-local",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev:local": "node scripts/dev-local.mjs",
+    "test:local": "node scripts/smoke-local.mjs",
+    "build:backend": "npm run build --prefix backend",
+    "build:customer": "npm run build --prefix customer",
+    "setup:local": "node scripts/setup-local.mjs",
+    "build:admin": "npm run build --prefix frontend"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

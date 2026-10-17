@@ -35,6 +35,17 @@ export class UserService {
     return this.userRepository.save(user);
   }
 
+  async update(id: number, data: Partial<User>): Promise<User> {
+    const user = await this.findById(id);
+    Object.assign(user, data);
+    return this.userRepository.save(user);
+  }
+
+  async remove(id: number): Promise<void> {
+    const user = await this.findById(id);
+    await this.userRepository.remove(user);
+  }
+
   async updateBalance(id: number, balance: number): Promise<void> {
     await this.userRepository.update(id, { balance });
   }
@@ -47,8 +58,7 @@ export class UserService {
 
   async updateMemberLevel(id: number): Promise<void> {
     const user = await this.findById(id);
-    
-    // 根据累计消费更新会员等级
+
     if (user.totalSpent >= 10000) {
       user.memberLevel = 'diamond';
     } else if (user.totalSpent >= 5000) {
@@ -58,7 +68,7 @@ export class UserService {
     } else {
       user.memberLevel = 'normal';
     }
-    
+
     await this.userRepository.save(user);
   }
 }
