@@ -49,7 +49,7 @@
         </el-col>
       </el-row>
     </div>
-    
+
     <!-- 筛选栏 -->
     <div class="filter-bar">
       <el-row :gutter="16">
@@ -89,7 +89,7 @@
         </el-col>
       </el-row>
     </div>
-    
+
     <!-- 工单列表 -->
     <div class="ticket-list">
       <el-table
@@ -139,7 +139,7 @@
                 v-if="row.status === 'pending'"
                 type="success"
                 size="small"
-                @click="handleAccept(row)"
+                @click="handleAccept(row as FaultTicket)"
               >
                 接单
               </el-button>
@@ -147,7 +147,7 @@
                 v-if = "['accepted', 'processing'].includes(row.status)"
                 type="primary"
                 size="small"
-                @click="handleResolve(row)"
+                @click="handleResolve(row as FaultTicket)"
               >
                 完成
               </el-button>
@@ -155,13 +155,13 @@
                 v-if = "['accepted', 'processing'].includes(row.status)"
                 type="warning"
                 size="small"
-                @click="handleTransfer(row)"
+                @click="handleTransfer(row as FaultTicket)"
               >
                 换机
               </el-button>
               <el-button
                 size="small"
-                @click="handleDetail(row)"
+                @click="handleDetail(row as FaultTicket)"
               >
                 详情
               </el-button>
@@ -170,7 +170,7 @@
         </el-table-column>
       </el-table>
     </div>
-    
+
     <!-- 工单详情弹窗 -->
     <el-dialog
       v-model="detailVisible"
@@ -197,13 +197,13 @@
           <el-descriptions-item label="创建时间">{{ formatTime(currentTicket.createdAt) }}</el-descriptions-item>
           <el-descriptions-item label="超时时间">{{ currentTicket.timeoutAt ? formatTime(currentTicket.timeoutAt) : '-' }}</el-descriptions-item>
         </el-descriptions>
-        
+
         <div v-if="currentTicket.status === 'pending'" class="ticket-actions">
           <el-button type="success" @click="handleAccept(currentTicket)">接单处理</el-button>
         </div>
       </div>
     </el-dialog>
-    
+
     <!-- 完成工单弹窗 -->
     <el-dialog
       v-model="resolveVisible"
@@ -232,7 +232,7 @@
         <el-button type="primary" @click="submitResolve">确认完成</el-button>
       </template>
     </el-dialog>
-    
+
     <!-- 换机弹窗 -->
     <el-dialog
       v-model="transferVisible"
@@ -242,7 +242,7 @@
       <div class="transfer-content">
         <p>当前故障机器：<strong>{{ currentTicket?.machineId }}</strong></p>
         <p>请选择目标机器：</p>
-        
+
         <el-table :data="availableMachines" stripe @row-click="selectTargetMachine">
           <el-table-column prop="id" label="机器编号" width="100" />
           <el-table-column prop="areaId" label="区域" width="80">
@@ -251,7 +251,7 @@
             </template>
           </el-table-column>
           <el-table-column prop="status" label="状态" width="80">
-            <template #default="{ row }">
+            <template #default>
               <el-tag type="success" size="small">空闲</el-tag>
             </template>
           </el-table-column>
@@ -278,6 +278,7 @@
 </template>
 
 <script setup lang="ts">
+import type { TagProps } from 'element-plus'
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useFaultStore } from '@/stores/fault'
@@ -314,7 +315,7 @@ const avgResponseTime = ref(5) // 示例数据
 // 筛选后的工单
 const filteredTickets = computed(() => {
   let tickets = faultStore.sortedTickets
-  
+
   if (filters.value.status) {
     tickets = tickets.filter(t => t.status === filters.value.status)
   }
@@ -324,7 +325,7 @@ const filteredTickets = computed(() => {
   if (filters.value.faultType) {
     tickets = tickets.filter(t => t.faultType === filters.value.faultType)
   }
-  
+
   return tickets
 })
 
@@ -334,25 +335,25 @@ const availableMachines = computed(() => {
 })
 
 const getPriorityType = (priority: string) => {
-  const map: Record<string, string> = {
+  const map: Record<string, TagProps['type']> = {
     P0: 'danger',
     P1: 'warning',
-    P2: '',
+    P2: 'info',
     P3: 'info',
   }
-  return map[priority] || ''
+  return map[priority] || 'info'
 }
 
 const getStatusType = (status: string) => {
-  const map: Record<string, string> = {
+  const map: Record<string, TagProps['type']> = {
     pending: 'danger',
     accepted: 'warning',
-    processing: '',
+    processing: 'info',
     transferred: 'warning',
     resolved: 'success',
     cancelled: 'info',
   }
-  return map[status] || ''
+  return map[status] || 'info'
 }
 
 const getStatusName = (status: string) => {
@@ -385,12 +386,12 @@ const getFaultTypeName = (type: string) => {
 }
 
 const getSourceType = (source: string) => {
-  const map: Record<string, string> = {
+  const map: Record<string, TagProps['type']> = {
     auto_detect: 'danger',
     player_report: 'warning',
-    staff_report: '',
+    staff_report: 'info',
   }
-  return map[source] || ''
+  return map[source] || 'info'
 }
 
 const getSourceName = (source: string) => {
@@ -431,13 +432,13 @@ const handleAccept = async (ticket: FaultTicket) => {
     await ElMessageBox.confirm('确认接单处理此故障？', '确认', {
       type: 'warning',
     })
-    
+
     await faultApi.acceptTicket(ticket.id)
     faultStore.updateTicket(ticket.id, {
       status: 'accepted',
       handlerId: 1, // 当前用户ID
     })
-    
+
     ElMessage.success('已接单')
     detailVisible.value = false
   } catch (error) {
@@ -456,14 +457,14 @@ const submitResolve = async () => {
     ElMessage.warning('请选择处理方式')
     return
   }
-  
+
   try {
     await faultApi.resolveTicket(currentTicket.value.id, resolveForm.value)
     faultStore.updateTicket(currentTicket.value.id, { status: 'resolved' })
-    
+
     // 更新机器状态
     machineStore.updateMachineStatus(currentTicket.value.machineId, 'offline')
-    
+
     resolveVisible.value = false
     ElMessage.success('工单已完成')
   } catch (error) {
@@ -486,17 +487,15 @@ const submitTransfer = async () => {
     ElMessage.warning('请选择目标机器')
     return
   }
-  
+
   try {
-    await faultApi.transferTicket(currentTicket.value.id, selectedTargetMachine.value)
-    faultStore.updateTicket(currentTicket.value.id, {
-      status: 'transferred',
-      newMachineId: selectedTargetMachine.value,
-    })
-    
+    const updated = await faultApi.transferTicket(currentTicket.value.id, selectedTargetMachine.value)
+    faultStore.updateTicket(currentTicket.value.id, updated)
+    await machineStore.fetchMachines()
+
     // 更新机器状态
     machineStore.updateMachineStatus(currentTicket.value.machineId, 'fault')
-    
+
     transferVisible.value = false
     ElMessage.success('换机成功')
   } catch (error) {
@@ -513,75 +512,75 @@ onMounted(() => {
 .faults-container {
   .stats-bar {
     margin-bottom: 20px;
-    
+
     .stat-card {
-      background: #fff;
+      background: var(--paper-light);
       padding: 20px;
-      border-radius: 8px;
+      border-radius: 3px;
       display: flex;
       align-items: center;
       gap: 16px;
-      
+
       .stat-icon {
         width: 48px;
         height: 48px;
-        border-radius: 12px;
+        border-radius: 3px;
         display: flex;
         align-items: center;
         justify-content: center;
         color: #fff;
-        
-        &.pending { background: #f56c6c; }
-        &.processing { background: #e6a23c; }
-        &.resolved { background: #67c23a; }
-        &.timeout { background: #409eff; }
+
+        &.pending { background: #a65c4a; }
+        &.processing { background: #a48b55; }
+        &.resolved { background: #6e8566; }
+        &.timeout { background: #536953; }
       }
-      
+
       .stat-info {
         .stat-value {
           font-size: 28px;
           font-weight: bold;
-          color: #303133;
+          color: #292f29;
         }
-        
+
         .stat-label {
           font-size: 14px;
-          color: #909399;
+          color: #7c8071;
         }
       }
     }
   }
-  
+
   .filter-bar {
-    background: #fff;
+    background: var(--paper-light);
     padding: 16px;
-    border-radius: 8px;
+    border-radius: 3px;
     margin-bottom: 20px;
   }
-  
+
   .ticket-list {
-    background: #fff;
+    background: var(--paper-light);
     padding: 16px;
-    border-radius: 8px;
-    
+    border-radius: 3px;
+
     :deep(.el-table) {
       .row-p0 {
-        background-color: #fef0f0 !important;
+        background-color: #f1e4dc !important;
       }
-      
+
       .row-p1 {
-        background-color: #fdf6ec !important;
+        background-color: #f0eadb !important;
       }
     }
   }
-  
+
   .ticket-detail {
     .ticket-actions {
       margin-top: 20px;
       text-align: center;
     }
   }
-  
+
   .transfer-content {
     p {
       margin-bottom: 12px;

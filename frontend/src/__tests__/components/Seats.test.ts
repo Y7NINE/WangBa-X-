@@ -65,7 +65,7 @@ describe('Seats Component', () => {
         },
       },
     })
-    
+
     expect(wrapper.find('.seats-container').exists()).toBe(true)
     expect(wrapper.find('.stats-bar').exists()).toBe(true)
   })
@@ -84,7 +84,7 @@ describe('Seats Component', () => {
         },
       },
     })
-    
+
     const statValues = wrapper.findAll('.stat-value')
     expect(statValues.length).toBe(6)
   })
@@ -103,7 +103,7 @@ describe('Seats Component', () => {
         },
       },
     })
-    
+
     expect(wrapper.find('.filter-bar').exists()).toBe(true)
   })
 
@@ -121,7 +121,7 @@ describe('Seats Component', () => {
         },
       },
     })
-    
+
     expect(wrapper.text()).toContain('平面图')
     expect(wrapper.text()).toContain('列表')
   })
@@ -140,14 +140,15 @@ describe('Seats Component', () => {
         },
       },
     })
-    
+
     // 默认是平面图模式
     expect(wrapper.find('.floor-plan-container').exists()).toBe(true)
-    
+
     // 切换到列表模式
     const listButton = wrapper.findAll('.el-radio-button').find(b => b.text().includes('列表'))
-    await listButton?.trigger('click')
-    
+    expect(listButton).toBeDefined()
+    await listButton!.get('input[type="radio"]').setValue()
+
     await wrapper.vm.$nextTick()
     expect(wrapper.find('.grid-view-container').exists()).toBe(true)
   })
@@ -166,7 +167,7 @@ describe('Seats Component', () => {
         },
       },
     })
-    
+
     expect(wrapper.find('.floor-plan').exists()).toBe(true)
     expect(wrapper.find('.entrance').exists()).toBe(true)
     expect(wrapper.find('.counter').exists()).toBe(true)

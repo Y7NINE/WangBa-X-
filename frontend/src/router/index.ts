@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router'
+﻿import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router'
 
 const routes: RouteRecordRaw[] = [
   {
@@ -62,6 +62,18 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '悬赏任务', icon: 'Trophy' },
       },
       {
+        path: 'wakeup',
+        name: 'Wakeup',
+        component: () => import('@/views/wakeup/index.vue'),
+        meta: { title: '智能唤醒', icon: 'AlarmClock' },
+      },
+      {
+        path: 'orders',
+        name: 'Orders',
+        component: () => import('@/views/orders/index.vue'),
+        meta: { title: '水吧订单', icon: 'Coffee' },
+      },
+      {
         path: 'reports',
         name: 'Reports',
         component: () => import('@/views/reports/index.vue'),
@@ -83,7 +95,7 @@ const router = createRouter({
 })
 
 // 路由守卫
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, _from, next) => {
   const token = localStorage.getItem('token')
   if (to.path !== '/login' && !token) {
     next('/login')

@@ -7,12 +7,13 @@
       <button class="refresh-btn" @click="loadData">刷新</button>
     </header>
 
+    <div class="view-toolbar"><div class="view-tabs" role="group" aria-label="座位视图"><button :class="{ active: viewMode === 'hall' }" :aria-pressed="viewMode === 'hall'" @click="viewMode = 'hall'">大厅示意</button><button :class="{ active: viewMode === 'list' }" :aria-pressed="viewMode === 'list'" @click="viewMode = 'list'">座位列表</button></div><span>选一席，自在开局</span></div>
     <!-- 图例 -->
     <div class="legend">
       <span class="legend-item"><span class="dot available"></span>空闲</span>
       <span class="legend-item"><span class="dot using"></span>使用中</span>
       <span class="legend-item"><span class="dot fault"></span>故障</span>
-      <span class="legend-item"><span class="dot cleaning"></span>清理中</span>
+      <span class="legend-item"><span class="dot cleaning"></span>待清理 / 清理中</span>
     </div>
 
     <!-- 区域筛选 -->
@@ -27,17 +28,23 @@
       </button>
     </div>
 
+    <p v-if="loading" class="seat-feedback" role="status">正在查看座位…</p>
+    <p v-else-if="loadError" class="seat-feedback" role="alert">{{ loadError }}</p>
+    <p v-else-if="!filteredMachines.length" class="seat-feedback">当前区域暂无座位，请尝试其他区域。</p>
+
+    <SeatHall v-if="viewMode === 'hall' && !loading && !loadError && filteredMachines.length" :areas="visibleAreas" :machines="filteredMachines" :busy="starting" @select="handleSeatClick" />
     <!-- 座位列表 -->
-    <div class="seats-list">
-      <div
+    <div v-if="viewMode === 'list' && !loading && !loadError" class="seats-list">
+      <button
         v-for="machine in filteredMachines"
         :key="machine.id"
         class="seat-card"
         :class="machine.status"
+        :disabled="starting || machine.status !== 'offline'"
         @click="handleSeatClick(machine)"
       >
         <div class="seat-left">
-          <div class="seat-icon">💻</div>
+          <svg class="seat-icon" viewBox="0 0 28 28" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true"><rect x="3" y="4" width="22" height="15" rx="1"/><path d="M14 19v5m-6 0h12"/></svg>
           <div class="seat-info">
             <div class="seat-id">{{ machine.id }}</div>
             <div class="seat-area">{{ getAreaName(machine.areaId) }}</div>
@@ -49,7 +56,7 @@
           </span>
           <span v-if="machine.status === 'offline'" class="action-hint">点击上机 ›</span>
         </div>
-      </div>
+      </button>
     </div>
 
     <!-- 底部统计 -->
@@ -71,8 +78,9 @@
 </template>
 
 <script setup lang="ts">
+import SeatHall from '@/components/SeatHall.vue'
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 import { machineApi, Machine, Area } from '@/api/machine'
@@ -83,14 +91,22 @@ const router = useRouter()
 const userStore = useUserStore()
 
 const machines = ref<Machine[]>([])
+const loading = ref(false)
+const loadError = ref('')
+const starting = ref(false)
+const viewMode = ref<'hall' | 'list'>('hall')
 const areas = ref<Area[]>([])
-const selectedArea = ref(0)
+const route = useRoute()
+const requestedArea = Number(route.query.area)
+const selectedArea = ref(Number.isInteger(requestedArea) && requestedArea > 0 ? requestedArea : 0)
 let socket: Socket | null = null
 
 const areaTabs = computed(() => [
   { id: 0, name: '全部' },
   ...areas.value.map(a => ({ id: a.id, name: a.name }))
 ])
+
+const visibleAreas = computed(() => areas.value.filter(area => selectedArea.value === 0 || area.id === selectedArea.value))
 
 const filteredMachines = computed(() => {
   if (selectedArea.value === 0) return machines.value
@@ -115,6 +131,8 @@ const getStatusText = (status: string) => {
 }
 
 const handleSeatClick = async (machine: Machine) => {
+  if (starting.value) return
+  if (userStore.currentSession) { ElMessage.info('你已有上机会话，可在首页查看或结算'); router.push('/'); return }
   if (machine.status !== 'offline') {
     ElMessage.info(`${machine.id} ${getStatusText(machine.status)}`)
     return
@@ -127,27 +145,35 @@ const handleSeatClick = async (machine: Machine) => {
   }
 
   try {
-    await ElMessageBox.confirm(`选择 ${machine.id} 上机？`, '确认上机')
+    await ElMessageBox.confirm(`选择 ${machine.id} 上机？按区域单价计费，不足1分钟按1分钟计算；下机前请确认余额充足。`, '确认上机')
+    starting.value = true
     const session = await billingApi.startSession(userStore.user!.id, machine.id)
     userStore.currentSession = session
     ElMessage.success(`已上机 ${machine.id}`)
     router.push('/')
   } catch (e: any) {
-    if (e !== 'cancel') ElMessage.error(e.message || '上机失败')
-  }
+    if (e !== 'cancel' && e !== 'close') ElMessage.error(e.message || '上机失败')
+    loadData()
+  } finally { starting.value = false }
 }
 
 const loadData = async () => {
+  if (loading.value) return
+  loading.value = true
+  loadError.value = ''
   try {
-    machines.value = await machineApi.getMachines()
-    areas.value = await machineApi.getAreas()
+    const [machineList, areaList] = await Promise.all([machineApi.getMachines(), machineApi.getAreas()])
+    machines.value = machineList
+    areas.value = areaList
+    if (selectedArea.value && !areas.value.some(a => a.id === selectedArea.value)) selectedArea.value = 0
   } catch (e) {
-    console.error(e)
-  }
+    loadError.value = '座位暂时加载失败，请点击右上角刷新重试。'
+  } finally { loading.value = false }
 }
 
 const connectSocket = () => {
-  socket = io('http://localhost:3000')
+  socket = io({ path: '/socket.io' })
+  socket.on('connect', loadData)
   socket.on('machine_status_update', (data) => {
     const m = machines.value.find(m => m.id === data.machine_id)
     if (m) m.status = data.status
@@ -165,9 +191,13 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.view-toolbar { display:flex;align-items:center;justify-content:space-between;gap:10px;padding:18px 20px 10px; }.view-toolbar>span { font:11px var(--font-song);color:var(--ink-muted);letter-spacing:1px; }.view-tabs { display:flex;gap:2px;padding:3px;border:1px solid var(--rule); }.view-tabs button { border:0;background:none;color:var(--ink-soft);padding:9px 13px;min-height:38px;font-size:12px;cursor:pointer; }.view-tabs button.active { background:var(--ink);color:var(--paper-light); }.view-tabs button:focus-visible { outline:2px solid var(--cinnabar);outline-offset:2px; }.legend { flex-wrap:wrap;gap:10px!important; }.seat-card { width:100%;text-align:left;border:1px solid var(--rule);color:var(--ink);font:inherit; }.seat-card:disabled { cursor:default; }.seat-card:focus-visible { outline:2px solid var(--cinnabar);outline-offset:2px; }
+
+.seat-feedback { margin:24px 20px; padding:24px 16px; border-block:1px solid var(--rule); font-size:13px; line-height:1.8; color:var(--ink-soft); }
+
 .seats-page {
   min-height: 100vh;
-  background: #f5f7fa;
+  background: #f4f0e6;
   padding-bottom: 80px;
 }
 
@@ -191,7 +221,7 @@ onUnmounted(() => {
 .back-btn, .refresh-btn {
   background: none;
   border: none;
-  color: #667eea;
+  color: #536953;
   font-size: 14px;
   cursor: pointer;
 }
@@ -210,7 +240,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  color: #999;
+  color: #77796b;
 }
 
 .dot {
@@ -219,10 +249,10 @@ onUnmounted(() => {
   border-radius: 3px;
 }
 
-.dot.available { background: #4ade80; }
-.dot.using { background: #60a5fa; }
-.dot.fault { background: #f87171; }
-.dot.cleaning { background: #fb923c; }
+.dot.available { background: #6e8566; }
+.dot.using { background: #748892; }
+.dot.fault { background: #a85e4e; }
+.dot.cleaning { background: #a48b55; }
 
 .area-tabs {
   display: flex;
@@ -245,7 +275,7 @@ onUnmounted(() => {
 }
 
 .area-tabs button.active {
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: var(--ink);
   color: #fff;
   border-color: transparent;
 }
@@ -288,7 +318,7 @@ onUnmounted(() => {
 
 .seat-area {
   font-size: 12px;
-  color: #999;
+  color: #77796b;
   margin-top: 2px;
 }
 
@@ -306,28 +336,28 @@ onUnmounted(() => {
 }
 
 .status-tag.offline {
-  background: #dcfce7;
-  color: #16a34a;
+  background: #e5eadb;
+  color: #4e6846;
 }
 
 .status-tag.online {
-  background: #dbeafe;
-  color: #2563eb;
+  background: #e1e7e7;
+  color: #526b77;
 }
 
 .status-tag.fault {
-  background: #fee2e2;
-  color: #dc2626;
+  background: #f1e3dc;
+  color: #a34738;
 }
 
 .status-tag.dirty, .status-tag.cleaning {
-  background: #ffedd5;
-  color: #ea580c;
+  background: #efe7d4;
+  color: #8d713c;
 }
 
 .action-hint {
   font-size: 12px;
-  color: #667eea;
+  color: #536953;
 }
 
 .bottom-stats {
@@ -353,13 +383,13 @@ onUnmounted(() => {
   font-weight: 700;
 }
 
-.stat .num.available { color: #4ade80; }
-.stat .num.using { color: #60a5fa; }
-.stat .num.fault { color: #f87171; }
+.stat .num.available { color: #6e8566; }
+.stat .num.using { color: #748892; }
+.stat .num.fault { color: #a85e4e; }
 
 .stat .label {
   font-size: 12px;
-  color: #999;
+  color: #77796b;
   display: block;
   margin-top: 2px;
 }

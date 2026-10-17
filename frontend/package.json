@@ -38,6 +38,6 @@
     "unplugin-vue-components": "^0.25.1",
     "vite": "^4.4.4",
     "vitest": "^0.34.0",
-    "vue-tsc": "^1.8.5"
+    "vue-tsc": "^3.3.13"
   }
 }

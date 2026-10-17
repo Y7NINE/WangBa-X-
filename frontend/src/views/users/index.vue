@@ -16,7 +16,7 @@
           </el-input>
         </div>
       </template>
-      
+
       <el-table :data="filteredUsers" stripe>
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="nickname" label="昵称" width="120" />
@@ -43,14 +43,14 @@
         <el-table-column label="操作" width="150" fixed="right">
           <template #default="{ row }">
             <el-button-group>
-              <el-button size="small" @click="handleDetail(row)">详情</el-button>
-              <el-button size="small" type="warning" @click="handleRecharge(row)">充值</el-button>
+              <el-button size="small" @click="handleDetail(row as User)">详情</el-button>
+              <el-button size="small" type="warning" @click="handleRecharge(row as User)">充值</el-button>
             </el-button-group>
           </template>
         </el-table-column>
       </el-table>
     </el-card>
-    
+
     <!-- 用户详情弹窗 -->
     <el-dialog
       v-model="detailVisible"
@@ -74,7 +74,7 @@
           <el-descriptions-item label="累计消费">¥{{ currentUser.totalSpent }}</el-descriptions-item>
           <el-descriptions-item label="注册时间">{{ currentUser.createdAt }}</el-descriptions-item>
         </el-descriptions>
-        
+
         <div class="detail-actions">
           <el-button type="primary" @click="handleRecharge(currentUser)">
             <el-icon><Wallet /></el-icon> 充值
@@ -83,7 +83,7 @@
         </div>
       </div>
     </el-dialog>
-    
+
     <!-- 充值弹窗 -->
     <el-dialog
       v-model="rechargeVisible"
@@ -98,7 +98,7 @@
             <div class="balance">当前余额: ¥{{ currentUser.balance }}</div>
           </div>
         </div>
-        
+
         <el-form :model="rechargeForm" label-width="80px">
           <el-form-item label="充值金额">
             <el-input-number
@@ -109,7 +109,7 @@
               style="width: 100%"
             />
           </el-form-item>
-          
+
           <el-form-item label="快捷金额">
             <el-button-group>
               <el-button @click="rechargeForm.amount = 50">50</el-button>
@@ -118,15 +118,15 @@
               <el-button @click="rechargeForm.amount = 500">500</el-button>
             </el-button-group>
           </el-form-item>
-          
+
           <el-form-item label="支付方式">
             <el-radio-group v-model="rechargeForm.paymentMethod">
-              <el-radio label="cash">现金</el-radio>
-              <el-radio label="wechat">微信</el-radio>
-              <el-radio label="alipay">支付宝</el-radio>
+              <el-radio value="cash">现金</el-radio>
+              <el-radio value="wechat">微信</el-radio>
+              <el-radio value="alipay">支付宝</el-radio>
             </el-radio-group>
           </el-form-item>
-          
+
           <el-form-item label="备注">
             <el-input
               v-model="rechargeForm.remark"
@@ -135,7 +135,7 @@
             />
           </el-form-item>
         </el-form>
-        
+
         <div class="recharge-summary">
           <div class="summary-item">
             <span>充值金额</span>
@@ -147,7 +147,7 @@
           </div>
         </div>
       </div>
-      
+
       <template #footer>
         <el-button @click="rechargeVisible = false">取消</el-button>
         <el-button type="primary" @click="submitRecharge" :loading="recharging">
@@ -159,17 +159,19 @@
 </template>
 
 <script setup lang="ts">
+import type { TagProps } from 'element-plus'
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Search, Wallet } from '@element-plus/icons-vue'
 import { billingApi } from '@/api/billing'
+import { userApi, type User } from '@/api/user'
 
 const searchKey = ref('')
-const users = ref<any[]>([])
+const users = ref<User[]>([])
 const detailVisible = ref(false)
 const rechargeVisible = ref(false)
 const recharging = ref(false)
-const currentUser = ref<any>(null)
+const currentUser = ref<User | null>(null)
 
 const rechargeForm = ref({
   amount: 100,
@@ -181,8 +183,8 @@ const rechargeForm = ref({
 const filteredUsers = computed(() => {
   if (!searchKey.value) return users.value
   const key = searchKey.value.toLowerCase()
-  return users.value.filter(u => 
-    u.nickname.toLowerCase().includes(key) || 
+  return users.value.filter(u =>
+    u.nickname.toLowerCase().includes(key) ||
     u.phone?.includes(key)
   )
 })
@@ -190,13 +192,7 @@ const filteredUsers = computed(() => {
 // 加载用户数据
 const loadUsers = async () => {
   try {
-    const token = localStorage.getItem('token')
-    const response = await fetch('/api/users', {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-    if (response.ok) {
-      users.value = await response.json()
-    }
+    users.value = await userApi.getUsers()
   } catch (error) {
     console.error('加载用户失败', error)
   }
@@ -204,13 +200,13 @@ const loadUsers = async () => {
 
 // 会员等级类型
 const getLevelType = (level: string) => {
-  const map: Record<string, string> = {
+  const map: Record<string, TagProps['type']> = {
     normal: 'info',
-    silver: '',
+    silver: 'info',
     gold: 'warning',
     diamond: 'danger',
   }
-  return map[level] || ''
+  return map[level] || 'info'
 }
 
 // 会员等级名称
@@ -225,13 +221,13 @@ const getLevelName = (level: string) => {
 }
 
 // 查看详情
-const handleDetail = (user: any) => {
+const handleDetail = (user: User) => {
   currentUser.value = user
   detailVisible.value = true
 }
 
 // 打开充值
-const handleRecharge = (user: any) => {
+const handleRecharge = (user: User) => {
   currentUser.value = user
   rechargeForm.value = {
     amount: 100,
@@ -244,7 +240,7 @@ const handleRecharge = (user: any) => {
 // 提交充值
 const submitRecharge = async () => {
   if (!currentUser.value) return
-  
+
   recharging.value = true
   try {
     await billingApi.recharge(
@@ -252,13 +248,13 @@ const submitRecharge = async () => {
       rechargeForm.value.amount,
       rechargeForm.value.paymentMethod
     )
-    
+
     // 更新本地数据
     currentUser.value.balance += rechargeForm.value.amount
-    
+
     ElMessage.success(`充值成功！已为 ${currentUser.value.nickname} 充值 ¥${rechargeForm.value.amount}`)
     rechargeVisible.value = false
-    
+
     // 重新加载数据
     await loadUsers()
   } catch (error) {
@@ -280,9 +276,9 @@ onMounted(() => {
     justify-content: space-between;
     align-items: center;
   }
-  
+
   .balance {
-    color: #409eff;
+    color: #536953;
     font-weight: bold;
   }
 }
@@ -300,45 +296,45 @@ onMounted(() => {
     align-items: center;
     gap: 16px;
     padding: 16px;
-    background: #f5f7fa;
-    border-radius: 8px;
+    background: #f4f0e6;
+    border-radius: 3px;
     margin-bottom: 20px;
-    
+
     .user-name {
       .name {
         font-size: 18px;
         font-weight: bold;
-        color: #303133;
+        color: #292f29;
       }
-      
+
       .balance {
         font-size: 14px;
-        color: #909399;
+        color: #7c8071;
         margin-top: 4px;
       }
     }
   }
-  
+
   .recharge-summary {
-    background: #ecf5ff;
+    background: #e8eddf;
     padding: 16px;
-    border-radius: 8px;
+    border-radius: 3px;
     margin-top: 20px;
-    
+
     .summary-item {
       display: flex;
       justify-content: space-between;
       align-items: center;
       padding: 8px 0;
-      
+
       &:first-child {
-        border-bottom: 1px solid #d9ecff;
+        border-bottom: 1px solid #dee6d4;
       }
-      
+
       .amount {
         font-size: 20px;
         font-weight: bold;
-        color: #409eff;
+        color: #536953;
       }
     }
   }

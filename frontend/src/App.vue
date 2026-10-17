@@ -11,7 +11,7 @@ html, body {
   margin: 0;
   padding: 0;
   height: 100%;
-  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family: var(--font-sans);
 }
 
 #app {

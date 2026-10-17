@@ -7,7 +7,7 @@
           <el-button type="primary" @click="handleHandover">发起交接班</el-button>
         </div>
       </template>
-      
+
       <el-table :data="handoverRecords" stripe>
         <el-table-column prop="id" label="交接班ID" width="140" />
         <el-table-column prop="shiftType" label="班次" width="80">
@@ -20,7 +20,7 @@
         <el-table-column prop="handoverTime" label="交接时间" width="180" />
         <el-table-column prop="cashDifference" label="现金差异" width="100">
           <template #default="{ row }">
-            <span :style="{ color: row.cashDifference !== 0 ? '#f56c6c' : '#67c23a' }">
+            <span :style="{ color: row.cashDifference !== 0 ? '#a65c4a' : '#6e8566' }">
               {{ row.cashDifference > 0 ? '+' : '' }}¥{{ row.cashDifference }}
             </span>
           </template>
@@ -34,7 +34,7 @@
         </el-table-column>
       </el-table>
     </el-card>
-    
+
     <!-- 交接班弹窗 -->
     <el-dialog v-model="handoverVisible" title="交接班" width="500px">
       <el-form :model="handoverForm" label-width="100px">
@@ -114,7 +114,7 @@ const submitHandover = async () => {
     ElMessage.warning('请填写完整信息')
     return
   }
-  
+
   try {
     await ElMessageBox.confirm('确认提交交接班？提交后将无法修改', '确认', {
       type: 'warning',
@@ -134,10 +134,10 @@ const submitHandover = async () => {
     justify-content: space-between;
     align-items: center;
   }
-  
+
   .form-tip {
     font-size: 12px;
-    color: #909399;
+    color: #7c8071;
     margin-top: 4px;
   }
 }

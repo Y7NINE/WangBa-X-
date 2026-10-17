@@ -1,68 +1,57 @@
 <template>
   <div class="dashboard-container">
+    <p v-if="revenueError" class="dashboard-note" role="alert">{{ revenueError }}</p>
     <!-- 顶部卡片 -->
     <el-row :gutter="20" class="stat-cards">
       <el-col :span="6">
         <div class="stat-card">
-          <div class="stat-icon" style="background: linear-gradient(135deg, #409eff, #66b1ff)">
+          <div class="stat-icon" style="background: #536953">
             <el-icon :size="28"><Monitor /></el-icon>
           </div>
           <div class="stat-content">
             <div class="stat-value">{{ stats.online }}/{{ stats.total }}</div>
             <div class="stat-label">在线/总数</div>
           </div>
-          <div class="stat-trend">
-            <span class="trend-up">+12%</span>
-          </div>
         </div>
       </el-col>
-      
+
       <el-col :span="6">
         <div class="stat-card">
-          <div class="stat-icon" style="background: linear-gradient(135deg, #67c23a, #85ce61)">
+          <div class="stat-icon" style="background: #6e8566">
             <el-icon :size="28"><Money /></el-icon>
           </div>
           <div class="stat-content">
             <div class="stat-value">¥{{ todayRevenue }}</div>
             <div class="stat-label">今日营收</div>
           </div>
-          <div class="stat-trend">
-            <span class="trend-up">+8%</span>
-          </div>
         </div>
       </el-col>
-      
+
       <el-col :span="6">
         <div class="stat-card">
-          <div class="stat-icon" style="background: linear-gradient(135deg, #e6a23c, #ebb563)">
+          <div class="stat-icon" style="background: #a48b55">
             <el-icon :size="28"><User /></el-icon>
           </div>
           <div class="stat-content">
             <div class="stat-value">{{ todayVisitors }}</div>
             <div class="stat-label">今日人次</div>
           </div>
-          <div class="stat-trend">
-            <span class="trend-down">-3%</span>
-          </div>
         </div>
       </el-col>
-      
+
       <el-col :span="6">
         <div class="stat-card">
-          <div class="stat-icon" style="background: linear-gradient(135deg, #f56c6c, #f89898)">
+          <div class="stat-icon" style="background: #a65c4a">
             <el-icon :size="28"><Warning /></el-icon>
           </div>
           <div class="stat-content">
             <div class="stat-value">{{ faultCount }}</div>
             <div class="stat-label">待处理故障</div>
           </div>
-          <div class="stat-trend">
-            <span class="trend-down">-2</span>
-          </div>
         </div>
       </el-col>
     </el-row>
-    
+
     <!-- 图表区域 -->
     <el-row :gutter="20" class="chart-row">
       <el-col :span="16">
@@ -70,8 +59,8 @@
           <div class="card-header">
             <h3>营收趋势</h3>
             <el-radio-group v-model="revenuePeriod" size="small">
-              <el-radio-button label="week">本周</el-radio-button>
-              <el-radio-button label="month">本月</el-radio-button>
+              <el-radio-button value="week">本周</el-radio-button>
+              <el-radio-button value="month">本月</el-radio-button>
             </el-radio-group>
           </div>
           <div class="chart-container">
@@ -79,7 +68,7 @@
           </div>
         </div>
       </el-col>
-      
+
       <el-col :span="8">
         <div class="chart-card">
           <div class="card-header">
@@ -91,7 +80,7 @@
         </div>
       </el-col>
     </el-row>
-    
+
     <!-- 实时告警和热门区域 -->
     <el-row :gutter="20" class="bottom-row">
       <el-col :span="12">
@@ -124,15 +113,15 @@
                 {{ alert.priority }}
               </el-tag>
             </div>
-            
+
             <div v-if="recentAlerts.length === 0" class="no-alerts">
-              <el-icon :size="48" color="#67c23a"><CircleCheck /></el-icon>
+              <el-icon :size="48" color="#6e8566"><CircleCheck /></el-icon>
               <p>暂无告警</p>
             </div>
           </div>
         </div>
       </el-col>
-      
+
       <el-col :span="12">
         <div class="area-panel">
           <div class="card-header">
@@ -164,7 +153,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import type { TagProps } from 'element-plus'
+import { ref, computed, onMounted, watch } from 'vue'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import { LineChart, PieChart } from 'echarts/charts'
@@ -177,7 +167,9 @@ import {
 import VChart from 'vue-echarts'
 import { useMachineStore } from '@/stores/machine'
 import { useFaultStore } from '@/stores/fault'
+import { Monitor, Money, User, Warning, CircleClose, InfoFilled, CircleCheck } from '@element-plus/icons-vue'
 import dayjs from 'dayjs'
+import { analyticsApi, type Overview } from '@/api/analytics'
 
 use([
   CanvasRenderer,
@@ -196,8 +188,27 @@ const revenuePeriod = ref('week')
 
 // 统计数据
 const stats = computed(() => machineStore.stats)
-const todayRevenue = ref(3580)
-const todayVisitors = ref(128)
+const todayOverview = ref<Overview | null>(null)
+const trendOverview = ref<Overview | null>(null)
+const revenueError = ref('')
+const todayRevenue = computed(() => todayOverview.value ? Number(todayOverview.value.revenue).toFixed(2) : '—')
+const todayVisitors = computed(() => todayOverview.value?.sessions ?? '—')
+let revenueRequest = 0
+async function loadRevenue() {
+  const request = ++revenueRequest
+  const today = dayjs().format('YYYY-MM-DD')
+  const from = dayjs().subtract(revenuePeriod.value === 'month' ? 29 : 6, 'day').format('YYYY-MM-DD')
+  try {
+    const [current, trend] = await Promise.all([analyticsApi.getOverview({ from: today, to: today }), analyticsApi.getOverview({ from, to: today })])
+    if (request !== revenueRequest) return
+    todayOverview.value = current
+    trendOverview.value = trend
+    revenueError.value = ''
+  } catch {
+    if (request === revenueRequest) revenueError.value = '经营数据暂未加载，请稍后刷新页面。'
+  }
+}
+watch(revenuePeriod, loadRevenue)
 const faultCount = computed(() => faultStore.pendingTickets.length)
 
 // 最近告警
@@ -226,7 +237,7 @@ const revenueChartOption = computed(() => ({
   },
   xAxis: {
     type: 'category',
-    data: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'],
+    data: (trendOverview.value?.revenueByDay || []).map(day => day.date.slice(5)),
   },
   yAxis: {
     type: 'value',
@@ -237,7 +248,7 @@ const revenueChartOption = computed(() => ({
       name: '营收',
       type: 'line',
       smooth: true,
-      data: [2800, 3200, 2900, 3500, 3800, 4200, 3580],
+      data: (trendOverview.value?.revenueByDay || []).map(day => day.revenue),
       areaStyle: {
         color: {
           type: 'linear',
@@ -246,13 +257,13 @@ const revenueChartOption = computed(() => ({
           x2: 0,
           y2: 1,
           colorStops: [
-            { offset: 0, color: 'rgba(64, 158, 255, 0.3)' },
-            { offset: 1, color: 'rgba(64, 158, 255, 0.05)' },
+            { offset: 0, color: 'rgba(83, 105, 83, 0.2)' },
+            { offset: 1, color: 'rgba(83, 105, 83, 0.02)' },
           ],
         },
       },
       itemStyle: {
-        color: '#409eff',
+        color: '#536953',
       },
     },
   ],
@@ -273,8 +284,8 @@ const statusChartOption = computed(() => ({
       radius: ['40%', '70%'],
       avoidLabelOverlap: false,
       itemStyle: {
-        borderRadius: 10,
-        borderColor: '#fff',
+        borderRadius: 3,
+        borderColor: '#faf7ef',
         borderWidth: 2,
       },
       label: {
@@ -288,10 +299,11 @@ const statusChartOption = computed(() => ({
         },
       },
       data: [
-        { value: stats.value.online, name: '使用中', itemStyle: { color: '#67c23a' } },
-        { value: stats.value.offline, name: '空闲', itemStyle: { color: '#909399' } },
-        { value: stats.value.fault, name: '故障', itemStyle: { color: '#f56c6c' } },
-        { value: stats.value.dirty, name: '待清理', itemStyle: { color: '#e6a23c' } },
+        { value: stats.value.online, name: '使用中', itemStyle: { color: '#6e8566' } },
+        { value: stats.value.offline, name: '空闲', itemStyle: { color: '#7c8071' } },
+        { value: stats.value.fault, name: '故障', itemStyle: { color: '#a65c4a' } },
+        { value: stats.value.dirty, name: '待清理', itemStyle: { color: '#a48b55' } },
+        { value: stats.value.cleaning, name: '清理中', itemStyle: { color: '#b6a57a' } },
       ],
     },
   ],
@@ -312,20 +324,20 @@ const getFaultTypeName = (type: string) => {
 }
 
 const getPriorityType = (priority: string) => {
-  const map: Record<string, string> = {
+  const map: Record<string, TagProps['type']> = {
     P0: 'danger',
     P1: 'warning',
-    P2: '',
+    P2: 'info',
     P3: 'info',
   }
-  return map[priority] || ''
+  return map[priority] || 'info'
 }
 
 const getAreaColor = (rate: number) => {
-  if (rate >= 80) return '#67c23a'
-  if (rate >= 50) return '#409eff'
-  if (rate >= 30) return '#e6a23c'
-  return '#f56c6c'
+  if (rate >= 80) return '#6e8566'
+  if (rate >= 50) return '#536953'
+  if (rate >= 30) return '#a48b55'
+  return '#a65c4a'
 }
 
 const formatTime = (time: string) => {
@@ -333,115 +345,120 @@ const formatTime = (time: string) => {
 }
 
 onMounted(() => {
+  loadRevenue()
   machineStore.fetchMachines()
   faultStore.fetchTickets()
 })
 </script>
 
 <style scoped lang="scss">
+.dashboard-note { font-size:12px;color:var(--cinnabar);margin:0 0 16px;line-height:1.8; }
+
 .dashboard-container {
   .stat-cards {
     margin-bottom: 20px;
-    
+
     .stat-card {
-      background: #fff;
-      padding: 20px;
-      border-radius: 12px;
+      background: var(--paper-light);
+      padding: 19px 18px;
+      min-height:108px;
+      border-radius: 3px;
       display: flex;
       align-items: center;
-      gap: 16px;
-      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
-      
+      gap: 12px;
+      box-shadow: none;
+
       .stat-icon {
         width: 56px;
         height: 56px;
-        border-radius: 12px;
+        border-radius: 3px;
         display: flex;
         align-items: center;
         justify-content: center;
         color: #fff;
       }
-      
+
       .stat-content {
         flex: 1;
-        
+
         .stat-value {
           font-size: 24px;
           font-weight: bold;
-          color: #303133;
+          color: #292f29;
         }
-        
+
         .stat-label {
-          font-size: 14px;
-          color: #909399;
-          margin-top: 4px;
+          font-size: 12px;
+          white-space: nowrap;
+          color: #7c8071;
+          margin-top: 7px;
         }
       }
-      
+
       .stat-trend {
         .trend-up {
-          color: #67c23a;
+          color: #6e8566;
           font-size: 14px;
         }
-        
+
         .trend-down {
-          color: #f56c6c;
+          color: #a65c4a;
           font-size: 14px;
         }
       }
     }
   }
-  
+
   .chart-row {
     margin-bottom: 20px;
   }
-  
+
   .chart-card {
-    background: #fff;
+    background: var(--paper-light);
     padding: 20px;
-    border-radius: 12px;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
-    
+    border-radius: 3px;
+    box-shadow: none;
+
     .card-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
       margin-bottom: 16px;
-      
+
       h3 {
         font-size: 16px;
-        color: #303133;
+        color: #292f29;
         margin: 0;
       }
     }
-    
+
     .chart-container {
       height: 300px;
     }
   }
-  
+
   .bottom-row {
     .alert-panel,
     .area-panel {
-      background: #fff;
+      background: var(--paper-light);
       padding: 20px;
-      border-radius: 12px;
-      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
-      
+      border-radius: 3px;
+      box-shadow: none;
+
       .card-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
         margin-bottom: 16px;
-        
+
         h3 {
           font-size: 16px;
-          color: #303133;
+          color: #292f29;
           margin: 0;
         }
       }
     }
-    
+
     .alert-list {
       .alert-item {
         display: flex;
@@ -449,73 +466,73 @@ onMounted(() => {
         gap: 12px;
         padding: 12px;
         margin-bottom: 8px;
-        border-radius: 8px;
+        border-radius: 3px;
         border-left: 4px solid;
-        
+
         &.p0 {
-          background: #fef0f0;
-          border-color: #f56c6c;
+          background: #f1e4dc;
+          border-color: #a65c4a;
         }
-        
+
         &.p1 {
-          background: #fdf6ec;
-          border-color: #e6a23c;
+          background: #f0eadb;
+          border-color: #a48b55;
         }
-        
+
         &.p2 {
-          background: #f0f9ff;
-          border-color: #409eff;
+          background: #e9eee2;
+          border-color: #536953;
         }
-        
+
         &.p3 {
-          background: #f4f4f5;
-          border-color: #909399;
+          background: #eeece3;
+          border-color: #7c8071;
         }
-        
+
         .alert-content {
           flex: 1;
-          
+
           .alert-title {
             font-size: 14px;
-            color: #303133;
+            color: #292f29;
           }
-          
+
           .alert-time {
             font-size: 12px;
-            color: #909399;
+            color: #7c8071;
             margin-top: 4px;
           }
         }
       }
-      
+
       .no-alerts {
         text-align: center;
         padding: 40px;
-        color: #909399;
-        
+        color: #7c8071;
+
         p {
           margin-top: 12px;
         }
       }
     }
-    
+
     .area-list {
       .area-item {
         margin-bottom: 16px;
-        
+
         .area-info {
           display: flex;
           justify-content: space-between;
           margin-bottom: 8px;
-          
+
           .area-name {
             font-size: 14px;
-            color: #303133;
+            color: #292f29;
           }
-          
+
           .area-detail {
             font-size: 14px;
-            color: #909399;
+            color: #7c8071;
           }
         }
       }

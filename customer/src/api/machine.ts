@@ -5,6 +5,8 @@ export interface Machine {
   areaId: number
   status: string
   currentUserId?: number
+  positionX?: number | null
+  positionY?: number | null
 }
 
 export interface Area {
