@@ -25,3 +25,21 @@ backend_error.log
 
 # Database
 *.db
+
+# Local simulation and preserved incomplete dependencies
+.local/
+node_modules.incomplete/
+package-lock.incomplete.json
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+
+# Local tooling and generated artifacts
+.mimocode/
+coverage/
+*.tsbuildinfo
+*.config.ts.timestamp-*.mjs
+.env.*
+!.env.example
+*.db-shm
+*.db-wal

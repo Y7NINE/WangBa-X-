@@ -7,7 +7,7 @@
           <el-button type="primary" @click="handleRecharge">充值</el-button>
         </div>
       </template>
-      
+
       <el-tabs v-model="activeTab">
         <el-tab-pane label="当前会话" name="sessions">
           <el-table :data="activeSessions" stripe>
@@ -31,14 +31,14 @@
             <el-table-column label="操作" width="150">
               <template #default="{ row }">
                 <el-button-group>
-                  <el-button size="small" @click="handlePause(row)">暂停</el-button>
-                  <el-button size="small" type="danger" @click="handleEnd(row)">结束</el-button>
+                  <el-button size="small" @click="handlePause(row as Session)">{{ row.status === 'paused' ? '恢复' : '暂停' }}</el-button>
+                  <el-button size="small" type="danger" @click="handleEnd(row as Session)">结束</el-button>
                 </el-button-group>
               </template>
             </el-table-column>
           </el-table>
         </el-tab-pane>
-        
+
         <el-tab-pane label="交易记录" name="transactions">
           <el-table :data="transactions" stripe>
             <el-table-column prop="id" label="ID" width="80" />
@@ -46,13 +46,13 @@
             <el-table-column prop="type" label="类型" width="80">
               <template #default="{ row }">
                 <el-tag :type="row.type === 'recharge' ? 'success' : 'warning'">
-                  {{ row.type === 'recharge' ? '充值' : '消费' }}
+                  {{ row.type === 'recharge' ? '充值' : row.type === 'refund' ? '退款' : '消费' }}
                 </el-tag>
               </template>
             </el-table-column>
             <el-table-column prop="amount" label="金额" width="100">
               <template #default="{ row }">
-                <span :style="{ color: row.type === 'recharge' ? '#67c23a' : '#f56c6c' }">
+                <span :style="{ color: row.type === 'recharge' ? '#6e8566' : '#a65c4a' }">
                   {{ row.type === 'recharge' ? '+' : '-' }}¥{{ row.amount }}
                 </span>
               </template>
@@ -68,7 +68,7 @@
         </el-tab-pane>
       </el-tabs>
     </el-card>
-    
+
     <!-- 充值弹窗 -->
     <el-dialog v-model="rechargeVisible" title="用户充值" width="400px">
       <el-form :model="rechargeForm" label-width="80px">
@@ -80,9 +80,9 @@
         </el-form-item>
         <el-form-item label="支付方式">
           <el-radio-group v-model="rechargeForm.paymentMethod">
-            <el-radio label="cash">现金</el-radio>
-            <el-radio label="wechat">微信</el-radio>
-            <el-radio label="alipay">支付宝</el-radio>
+            <el-radio value="cash">现金</el-radio>
+            <el-radio value="wechat">微信</el-radio>
+            <el-radio value="alipay">支付宝</el-radio>
           </el-radio-group>
         </el-form-item>
       </el-form>
@@ -130,7 +130,7 @@ const submitRecharge = async () => {
     ElMessage.warning('请输入用户ID')
     return
   }
-  
+
   try {
     await billingApi.recharge(
       parseInt(rechargeForm.value.userId),
@@ -147,8 +147,9 @@ const submitRecharge = async () => {
 
 const handlePause = async (session: Session) => {
   try {
-    await billingApi.pauseSession(session.id)
-    ElMessage.success('已暂停')
+    if (session.status === 'paused') await billingApi.resumeSession(session.id)
+    else await billingApi.pauseSession(session.id)
+    ElMessage.success(session.status === 'paused' ? '已恢复' : '已暂停')
     loadData()
   } catch (error) {
     ElMessage.error('操作失败')

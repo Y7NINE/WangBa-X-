@@ -12,7 +12,7 @@ import { Logger } from '@nestjs/common';
 
 @WebSocketGateway({
   cors: {
-    origin: ['http://localhost:5173', 'http://localhost:3000'],
+    origin: ['http://localhost:5173', 'http://localhost:5180', 'http://127.0.0.1:5173', 'http://127.0.0.1:5180'],
     credentials: true,
   },
 })
@@ -35,35 +35,19 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     // 处理心跳数据
     this.logger.debug(`收到心跳: ${data.machine_id}`);
     client.emit('heartbeat_ack', { timestamp: new Date() });
-    
-    // 广播机器状态更新
-    this.server.emit('machine_status_update', {
-      machine_id: data.machine_id,
-      status: 'online',
-      metrics: data.metrics,
-    });
+
+    // Device liveness is separate from billable occupancy. Only business services publish seat status.
   }
 
   @SubscribeMessage('fault_alert')
   handleFaultAlert(@ConnectedSocket() client: Socket, @MessageBody() data: any) {
-    this.logger.warn(`收到故障告警: ${data.machine_id} - ${data.fault_type}`);
-    
-    // 广播故障告警给所有客户端
-    this.server.emit('new_alert', {
-      id: `ALT-${Date.now()}`,
-      machineId: data.machine_id,
-      faultType: data.fault_type,
-      priority: data.priority || 'P2',
-      source: 'auto_detect',
-      status: 'pending',
-      description: data.description,
-      createdAt: new Date(),
-    });
+    // Unauthenticated sockets may not create operational alerts. Use the authenticated HTTP API.
+    client.emit('device_error', { message: '请通过已认证接口上报故障' });
   }
 
   // 广播机器状态更新
   broadcastMachineUpdate(machineId: string, status: string) {
-    this.server.emit('machine_status_update', {
+    this.server?.emit('machine_status_update', {
       machine_id: machineId,
       status,
       timestamp: new Date(),
@@ -72,7 +56,7 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   // 广播故障工单更新
   broadcastTicketUpdate(ticketId: string, updates: any) {
-    this.server.emit('ticket_update', {
+    this.server?.emit('ticket_update', {
       id: ticketId,
       updates,
       timestamp: new Date(),
@@ -86,6 +70,6 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   // 广播通知给所有客户端
   broadcastNotification(notification: any) {
-    this.server.emit('notification', notification);
+    this.server?.emit('notification', notification);
   }
 }

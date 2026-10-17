@@ -41,16 +41,16 @@
         </el-col>
       </el-row>
     </div>
-    
+
     <!-- 视图切换和区域筛选 -->
     <div class="filter-bar">
       <div class="filter-left">
         <el-radio-group v-model="selectedArea" @change="handleAreaChange">
-          <el-radio-button :label="0">全部区域</el-radio-button>
+          <el-radio-button :value="0">全部区域</el-radio-button>
           <el-radio-button
             v-for="area in machineStore.areas"
             :key="area.id"
-            :label="area.id"
+            :value="area.id"
           >
             {{ area.name }}
           </el-radio-button>
@@ -58,16 +58,16 @@
       </div>
       <div class="filter-right">
         <el-radio-group v-model="viewMode">
-          <el-radio-button label="floor">
+          <el-radio-button value="floor">
             <el-icon><Grid /></el-icon> 平面图
           </el-radio-button>
-          <el-radio-button label="grid">
+          <el-radio-button value="grid">
             <el-icon><Menu /></el-icon> 列表
           </el-radio-button>
         </el-radio-group>
       </div>
     </div>
-    
+
     <!-- 平面图视图 -->
     <div v-if="viewMode === 'floor'" class="floor-plan-container">
       <div class="floor-plan">
@@ -76,7 +76,7 @@
           <div class="door">入口</div>
           <div class="entrance-label">大门</div>
         </div>
-        
+
         <!-- 收银台 -->
         <div class="counter">
           <div class="counter-desk">
@@ -84,7 +84,7 @@
             <span>收银台</span>
           </div>
         </div>
-        
+
         <!-- 竞技区 A -->
         <div class="area-section area-a" :class="{ 'area-hidden': selectedArea !== 0 && selectedArea !== 1 }">
           <div class="area-title">
@@ -103,12 +103,11 @@
                 <el-icon :size="20"><Monitor /></el-icon>
               </div>
               <div class="seat-label">{{ machine.id }}</div>
-              
+
               <!-- 清理中/待清理状态显示进度 -->
               <div v-if="machine.status === 'cleaning'" class="cleaning-progress">
                 <el-icon class="spin"><Loading /></el-icon>
                 <span class="cleaning-text">清理中</span>
-                <el-progress :percentage="getCleaningProgress(machine.id)" :stroke-width="4" :show-text="false" />
               </div>
               <div v-else-if="machine.status === 'dirty'" class="cleaning-progress dirty">
                 <el-icon><Brush /></el-icon>
@@ -119,7 +118,7 @@
             </div>
           </div>
         </div>
-        
+
         <!-- 休闲区 B -->
         <div class="area-section area-b" :class="{ 'area-hidden': selectedArea !== 0 && selectedArea !== 2 }">
           <div class="area-title">
@@ -138,12 +137,11 @@
                 <el-icon :size="20"><Monitor /></el-icon>
               </div>
               <div class="seat-label">{{ machine.id }}</div>
-              
+
               <!-- 清理中/待清理状态显示进度 -->
               <div v-if="machine.status === 'cleaning'" class="cleaning-progress">
                 <el-icon class="spin"><Loading /></el-icon>
                 <span class="cleaning-text">清理中</span>
-                <el-progress :percentage="getCleaningProgress(machine.id)" :stroke-width="4" :show-text="false" />
               </div>
               <div v-else-if="machine.status === 'dirty'" class="cleaning-progress dirty">
                 <el-icon><Brush /></el-icon>
@@ -154,7 +152,7 @@
             </div>
           </div>
         </div>
-        
+
         <!-- 包间 C -->
         <div class="area-section area-c" :class="{ 'area-hidden': selectedArea !== 0 && selectedArea !== 3 }">
           <div class="area-title">
@@ -176,7 +174,7 @@
                     <el-icon :size="16"><Monitor /></el-icon>
                   </div>
                   <div class="seat-label">{{ getRoomMachine(i, j)?.id || `C-${i}${j}` }}</div>
-                  
+
                   <!-- 清理中/待清理状态显示进度 -->
                   <div v-if="getRoomMachine(i, j)?.status === 'cleaning'" class="cleaning-progress mini">
                     <el-icon class="spin"><Loading /></el-icon>
@@ -191,7 +189,7 @@
             </div>
           </div>
         </div>
-        
+
         <!-- 水吧区域 -->
         <div class="bar-section">
           <div class="bar-counter">
@@ -199,14 +197,14 @@
             <span>水吧</span>
           </div>
         </div>
-        
+
         <!-- 洗手间 -->
         <div class="restroom">
           <el-icon :size="20"><Male /></el-icon>
           <span>洗手间</span>
         </div>
       </div>
-      
+
       <!-- 图例 -->
       <div class="floor-legend">
         <div class="legend-item">
@@ -231,7 +229,7 @@
         </div>
       </div>
     </div>
-    
+
     <!-- 网格视图 -->
     <div v-else class="grid-view-container">
       <div class="seat-map">
@@ -249,7 +247,7 @@
           </div>
         </div>
       </div>
-      
+
       <!-- 图例 -->
       <div class="legend">
         <div class="legend-item">
@@ -274,7 +272,7 @@
         </div>
       </div>
     </div>
-    
+
     <!-- 机器详情弹窗 -->
     <el-dialog
       v-model="dialogVisible"
@@ -299,50 +297,50 @@
             {{ selectedMachine.faultType }}
           </el-descriptions-item>
         </el-descriptions>
-        
+
         <div class="machine-actions">
           <el-button-group>
             <el-button
               v-if="selectedMachine.status === 'offline'"
               type="success"
-              @click="handleStatusChange('online')"
+              @click="$router.push('/billing')"
             >
-              开机
+              查看计费
             </el-button>
             <el-button
               v-if="selectedMachine.status === 'online'"
               type="warning"
-              @click="handleStatusChange('offline')"
+              @click="$router.push('/billing')"
             >
-              关机
+              下机结算
             </el-button>
             <el-button
               v-if="selectedMachine.status === 'fault'"
               type="primary"
-              @click="handleStatusChange('repairing')"
+              @click="$router.push('/faults')"
             >
-              开始维修
+              处理工单
             </el-button>
             <el-button
               v-if="selectedMachine.status === 'repairing'"
               type="success"
-              @click="handleStatusChange('offline')"
+              @click="$router.push('/faults')"
             >
-              维修完成
+              查看工单
             </el-button>
             <el-button
               v-if="selectedMachine.status === 'dirty'"
               type="primary"
-              @click="handleStatusChange('cleaning')"
+              @click="$router.push('/cleaning')"
             >
-              开始清理
+              前往保洁
             </el-button>
             <el-button
               v-if="selectedMachine.status === 'cleaning'"
               type="success"
-              @click="handleStatusChange('offline')"
+              @click="$router.push('/cleaning')"
             >
-              清理完成
+              确认保洁
             </el-button>
             <el-button
               type="danger"
@@ -354,7 +352,7 @@
         </div>
       </div>
     </el-dialog>
-    
+
     <!-- 报告故障弹窗 -->
     <el-dialog
       v-model="faultDialogVisible"
@@ -392,11 +390,12 @@
 </template>
 
 <script setup lang="ts">
+import type { TagProps } from 'element-plus'
 import { ref, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Loading, Brush, Monitor, Grid, Menu, Coffee, Male } from '@element-plus/icons-vue'
 import { useMachineStore } from '@/stores/machine'
-import { machineApi, Machine } from '@/api/machine'
+import { type Machine } from '@/api/machine'
 import { faultApi } from '@/api/fault'
 
 const machineStore = useMachineStore()
@@ -417,7 +416,6 @@ const stats = computed(() => machineStore.stats)
 // 按区域分类机器
 const areaAMachines = computed(() => machineStore.machines.filter(m => m.areaId === 1))
 const areaBMachines = computed(() => machineStore.machines.filter(m => m.areaId === 2))
-const areaCMachines = computed(() => machineStore.machines.filter(m => m.areaId === 3))
 
 const getRoomMachine = (room: number, seat: number) => {
   // 包间机器ID: C-01, C-02, C-03, C-04, C-05, C-06
@@ -455,83 +453,24 @@ const getStatusText = (status: string) => {
 }
 
 const getStatusTagType = (status: string) => {
-  const map: Record<string, string> = {
+  const map: Record<string, TagProps['type']> = {
     online: 'success',
     offline: 'info',
     fault: 'danger',
     repairing: 'warning',
     dirty: 'warning',
-    cleaning: '',
+    cleaning: 'info',
   }
-  return map[status] || ''
+  return map[status] || 'info'
 }
 
 const handleAreaChange = () => {
   // 区域筛选变化
 }
 
-// 模拟清理进度（实际应该从后端获取）
-const cleaningProgress = ref<Record<string, number>>({})
-const cleaningTimers = ref<Record<string, any>>({})
-
-const getCleaningProgress = (machineId: string) => {
-  return cleaningProgress.value[machineId] || 0
-}
-
-// 开始清理时启动进度模拟
-const startCleaningProgress = (machineId: string) => {
-  cleaningProgress.value[machineId] = 0
-  cleaningTimers.value[machineId] = setInterval(() => {
-    if (cleaningProgress.value[machineId] < 100) {
-      cleaningProgress.value[machineId] += 10
-    } else {
-      clearInterval(cleaningTimers.value[machineId])
-      delete cleaningTimers.value[machineId]
-    }
-  }, 300) // 3秒完成清理
-}
-
-// 停止清理进度
-const stopCleaningProgress = (machineId: string) => {
-  if (cleaningTimers.value[machineId]) {
-    clearInterval(cleaningTimers.value[machineId])
-    delete cleaningTimers.value[machineId]
-  }
-  delete cleaningProgress.value[machineId]
-}
-
 const handleSeatClick = (machine: Machine) => {
   selectedMachine.value = machine
   dialogVisible.value = true
-}
-
-const handleStatusChange = async (status: string) => {
-  if (!selectedMachine.value) return
-  
-  try {
-    const machineId = selectedMachine.value.id
-    await machineApi.updateStatus(machineId, status)
-    
-    // 重新获取最新数据确保同步
-    await machineStore.fetchMachines()
-    
-    // 更新选中的机器
-    const updatedMachine = machineStore.machines.find(m => m.id === machineId)
-    if (updatedMachine) {
-      selectedMachine.value = updatedMachine
-    }
-    
-    // 启动/停止清理进度
-    if (status === 'cleaning') {
-      startCleaningProgress(machineId)
-    } else if (status === 'offline') {
-      stopCleaningProgress(machineId)
-    }
-    
-    ElMessage.success('状态更新成功')
-  } catch (error) {
-    ElMessage.error('状态更新失败')
-  }
 }
 
 const handleReportFault = () => {
@@ -544,17 +483,17 @@ const submitFault = async () => {
     ElMessage.warning('请选择故障类型')
     return
   }
-  
+
   try {
     await faultApi.createTicket({
       machineId: selectedMachine.value.id,
       faultType: faultForm.value.faultType,
       description: faultForm.value.description,
     })
-    
+
     // 重新获取最新数据确保同步
     await machineStore.fetchMachines()
-    
+
     faultDialogVisible.value = false
     dialogVisible.value = false
     ElMessage.success('故障报告已提交')
@@ -567,67 +506,67 @@ const submitFault = async () => {
 <style scoped lang="scss">
 .seats-container {
   .stats-bar {
-    background: #fff;
+    background: var(--paper-light);
     padding: 20px;
-    border-radius: 8px;
+    border-radius: 3px;
     margin-bottom: 20px;
-    
+
     .stat-item {
       text-align: center;
       padding: 16px;
-      border-radius: 8px;
-      background: #f5f7fa;
-      
+      border-radius: 3px;
+      background: #f4f0e6;
+
       .stat-value {
         font-size: 32px;
         font-weight: bold;
-        color: #303133;
+        color: #292f29;
       }
-      
+
       .stat-label {
         font-size: 14px;
-        color: #909399;
+        color: #7c8071;
         margin-top: 8px;
       }
-      
-      &.online .stat-value { color: #67c23a; }
-      &.offline .stat-value { color: #909399; }
-      &.fault .stat-value { color: #f56c6c; }
-      &.dirty .stat-value { color: #e6a23c; }
-      &.cleaning .stat-value { color: #409eff; }
+
+      &.online .stat-value { color: #6e8566; }
+      &.offline .stat-value { color: #7c8071; }
+      &.fault .stat-value { color: #a65c4a; }
+      &.dirty .stat-value { color: #a48b55; }
+      &.cleaning .stat-value { color: #536953; }
     }
   }
-  
+
   .filter-bar {
-    background: #fff;
+    background: var(--paper-light);
     padding: 16px;
-    border-radius: 8px;
+    border-radius: 3px;
     margin-bottom: 20px;
     display: flex;
     justify-content: space-between;
     align-items: center;
   }
-  
+
   // 平面图样式
   .floor-plan-container {
-    background: #fff;
+    background: var(--paper-light);
     padding: 24px;
-    border-radius: 8px;
+    border-radius: 3px;
     margin-bottom: 20px;
-    
+
     .floor-plan {
       position: relative;
       width: 100%;
       min-height: 600px;
-      background: #f8f9fa;
-      border: 2px solid #e4e7ed;
-      border-radius: 12px;
+      background: #eeeadd;
+      border: 2px solid #dcd6c8;
+      border-radius: 3px;
       padding: 20px;
       display: grid;
       grid-template-columns: 1fr 1fr 1fr;
       grid-template-rows: auto auto 1fr auto;
       gap: 20px;
-      
+
       // 入口
       .entrance {
         grid-column: 1 / -1;
@@ -635,85 +574,85 @@ const submitFault = async () => {
         flex-direction: column;
         align-items: center;
         padding: 10px;
-        
+
         .door {
-          background: #409eff;
+          background: #536953;
           color: #fff;
           padding: 8px 40px;
           border-radius: 4px;
           font-weight: bold;
         }
-        
+
         .entrance-label {
           margin-top: 4px;
           font-size: 12px;
-          color: #909399;
+          color: #7c8071;
         }
       }
-      
+
       // 收银台
       .counter {
         grid-column: 1 / -1;
         display: flex;
         justify-content: center;
-        
+
         .counter-desk {
-          background: linear-gradient(135deg, #304156, #3a4f65);
+          background: var(--paper-deep);
           color: #fff;
           padding: 12px 40px;
-          border-radius: 8px;
+          border-radius: 3px;
           display: flex;
           align-items: center;
           gap: 8px;
           font-weight: bold;
         }
       }
-      
+
       // 区域
       .area-section {
-        background: #fff;
-        border-radius: 8px;
+        background: var(--paper-light);
+        border-radius: 3px;
         padding: 16px;
-        border: 1px solid #e4e7ed;
-        
+        border: 1px solid #dcd6c8;
+
         &.area-hidden {
           opacity: 0.3;
           pointer-events: none;
         }
-        
+
         .area-title {
           display: flex;
           align-items: center;
           gap: 8px;
           margin-bottom: 16px;
-          
+
           .area-price {
             font-size: 12px;
-            color: #909399;
+            color: #7c8071;
           }
         }
-        
+
         .area-grid {
           display: grid;
           grid-template-columns: repeat(5, 1fr);
           gap: 10px;
-          
+
           &.rooms {
             grid-template-columns: repeat(3, 1fr);
-            
+
             .room {
-              background: #fafafa;
-              border: 1px dashed #dcdfe6;
-              border-radius: 8px;
+              background: #f6f3ea;
+              border: 1px dashed #d1caba;
+              border-radius: 3px;
               padding: 10px;
-              
+
               .room-label {
                 font-size: 12px;
-                color: #606266;
+                color: #555e52;
                 margin-bottom: 8px;
                 text-align: center;
               }
-              
+
               .room-seats {
                 display: flex;
                 gap: 8px;
@@ -721,42 +660,42 @@ const submitFault = async () => {
               }
             }
           }
-          
+
           .seat-slot {
-            background: #fff;
-            border: 2px solid #e4e7ed;
-            border-radius: 8px;
+            background: var(--paper-light);
+            border: 2px solid #dcd6c8;
+            border-radius: 3px;
             padding: 10px 8px;
             display: flex;
             flex-direction: column;
             align-items: center;
             cursor: pointer;
             transition: all 0.3s;
-            
+
             .seat-icon {
-              color: #606266;
+              color: #555e52;
               margin-bottom: 4px;
             }
-            
+
             .seat-label {
               font-size: 11px;
               font-weight: bold;
-              color: #303133;
+              color: #292f29;
             }
-            
+
             .seat-dot {
               width: 8px;
               height: 8px;
               border-radius: 50%;
               margin-top: 6px;
-              
-              &.online { background: #67c23a; box-shadow: 0 0 6px #67c23a; }
-              &.offline { background: #c0c4cc; }
-              &.fault { background: #f56c6c; box-shadow: 0 0 6px #f56c6c; animation: dot-blink 1s infinite; }
-              &.dirty { background: #e6a23c; }
-              &.cleaning { background: #409eff; }
+
+              &.online { background: #6e8566; box-shadow: none; }
+              &.offline { background: #9c9d8f; }
+              &.fault { background: #a65c4a; box-shadow: none; animation: dot-blink 1s infinite; }
+              &.dirty { background: #a48b55; }
+              &.cleaning { background: #536953; }
             }
-            
+
             // 清理进度样式
             .cleaning-progress {
               width: 100%;
@@ -765,104 +704,104 @@ const submitFault = async () => {
               flex-direction: column;
               align-items: center;
               gap: 4px;
-              
+
               .spin {
                 animation: spin 1s linear infinite;
-                color: #409eff;
+                color: #536953;
               }
-              
+
               .cleaning-text {
                 font-size: 10px;
-                color: #409eff;
+                color: #536953;
                 font-weight: bold;
               }
-              
+
               &.dirty {
                 .cleaning-text {
-                  color: #e6a23c;
+                  color: #a48b55;
                 }
-                
+
                 .el-icon {
-                  color: #e6a23c;
+                  color: #a48b55;
                 }
               }
-              
+
               &.mini {
                 margin-top: 4px;
-                
+
                 .cleaning-text {
                   font-size: 9px;
                 }
               }
-              
+
               .waiting-bar {
                 width: 80%;
                 height: 4px;
-                background: #e6a23c;
+                background: #a48b55;
                 border-radius: 2px;
                 animation: pulse 1.5s infinite;
               }
-              
+
               :deep(.el-progress) {
                 width: 80%;
               }
             }
-            
+
             &.online {
-              border-color: #67c23a;
-              background: #f0f9ff;
+              border-color: #6e8566;
+              background: #e9eee2;
             }
-            
+
             &.fault {
-              border-color: #f56c6c;
-              background: #fef0f0;
+              border-color: #a65c4a;
+              background: #f1e4dc;
               animation: fault-pulse 2s infinite;
             }
-            
+
             &.dirty {
-              border-color: #e6a23c;
-              background: #fdf6ec;
+              border-color: #a48b55;
+              background: #f0eadb;
             }
-            
+
             &.cleaning {
-              border-color: #409eff;
-              background: #ecf5ff;
+              border-color: #536953;
+              background: #e8eddf;
             }
-            
+
             &:hover {
               transform: translateY(-2px);
-              box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+              box-shadow: none;
             }
-            
+
             &.small {
               padding: 6px;
-              
+
               .seat-icon { margin-bottom: 2px; }
               .seat-label { font-size: 10px; }
             }
           }
         }
       }
-      
+
       // 水吧
       .bar-section {
         grid-column: 1 / 2;
         display: flex;
         align-items: center;
         justify-content: center;
-        
+
         .bar-counter {
-          background: linear-gradient(135deg, #e6a23c, #ebb563);
+          background: var(--paper-deep);
           color: #fff;
           padding: 16px 30px;
-          border-radius: 8px;
+          border-radius: 3px;
           display: flex;
           align-items: center;
           gap: 8px;
           font-weight: bold;
         }
       }
-      
+
       // 洗手间
       .restroom {
         grid-column: 3 / 4;
@@ -871,54 +810,54 @@ const submitFault = async () => {
         justify-content: center;
         gap: 8px;
         background: #f0f0f0;
-        border-radius: 8px;
+        border-radius: 3px;
         padding: 16px;
-        color: #606266;
+        color: #555e52;
       }
     }
-    
+
     .floor-legend {
       margin-top: 20px;
       display: flex;
       gap: 24px;
       justify-content: center;
-      
+
       .legend-item {
         display: flex;
         align-items: center;
         gap: 8px;
-        
+
         .legend-dot {
           width: 12px;
           height: 12px;
           border-radius: 50%;
-          
-          &.online { background: #67c23a; box-shadow: 0 0 6px #67c23a; }
-          &.offline { background: #c0c4cc; }
-          &.fault { background: #f56c6c; box-shadow: 0 0 6px #f56c6c; }
-          &.dirty { background: #e6a23c; }
-          &.cleaning { background: #409eff; }
+
+          &.online { background: #6e8566; box-shadow: none; }
+          &.offline { background: #9c9d8f; }
+          &.fault { background: #a65c4a; box-shadow: none; }
+          &.dirty { background: #a48b55; }
+          &.cleaning { background: #536953; }
         }
       }
     }
   }
-  
+
   // 网格视图样式
   .grid-view-container {
-    background: #fff;
+    background: var(--paper-light);
     padding: 20px;
-    border-radius: 8px;
+    border-radius: 3px;
     margin-bottom: 20px;
-    
+
     .seat-map {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
       gap: 16px;
-      
+
       .seat {
         width: 100%;
         aspect-ratio: 1;
-        border-radius: 12px;
+        border-radius: 3px;
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -927,78 +866,78 @@ const submitFault = async () => {
         transition: all 0.3s;
         font-size: 12px;
         color: #fff;
-        
+
         .seat-id {
           font-size: 16px;
           font-weight: bold;
           margin-bottom: 4px;
         }
-        
+
         .seat-status {
           font-size: 11px;
           opacity: 0.9;
         }
-        
+
         .seat-user {
           font-size: 10px;
           margin-top: 4px;
           opacity: 0.8;
         }
-        
+
         &.online {
-          background: linear-gradient(135deg, #67c23a, #85ce61);
+          background: var(--paper-deep);
         }
-        
+
         &.offline {
-          background: linear-gradient(135deg, #909399, #a8abb2);
+          background: var(--paper-deep);
         }
-        
+
         &.fault {
-          background: linear-gradient(135deg, #f56c6c, #f89898);
+          background: var(--paper-deep);
           animation: fault-blink 1s ease-in-out infinite;
         }
-        
+
         &.dirty {
-          background: linear-gradient(135deg, #e6a23c, #ebb563);
+          background: var(--paper-deep);
         }
-        
+
         &.cleaning {
-          background: linear-gradient(135deg, #409eff, #66b1ff);
+          background: var(--paper-deep);
         }
-        
+
         &:hover {
           transform: scale(1.05);
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+          box-shadow: none;
         }
       }
     }
-    
+
     .legend {
       margin-top: 20px;
       display: flex;
       gap: 24px;
       justify-content: center;
-      
+
       .legend-item {
         display: flex;
         align-items: center;
         gap: 8px;
-        
+
         .legend-color {
           width: 16px;
           height: 16px;
           border-radius: 4px;
-          
-          &.online { background: #67c23a; }
-          &.offline { background: #909399; }
-          &.fault { background: #f56c6c; }
-          &.dirty { background: #e6a23c; }
-          &.cleaning { background: #409eff; }
+
+          &.online { background: #6e8566; }
+          &.offline { background: #7c8071; }
+          &.fault { background: #a65c4a; }
+          &.dirty { background: #a48b55; }
+          &.cleaning { background: #536953; }
         }
       }
     }
   }
-  
+
   .machine-detail {
     .machine-actions {
       margin-top: 20px;
@@ -1010,20 +949,20 @@ const submitFault = async () => {
 @keyframes fault-blink {
   0%, 100% {
     opacity: 1;
-    box-shadow: 0 0 10px rgba(245, 108, 108, 0.5);
+    box-shadow: none;
   }
   50% {
     opacity: 0.85;
-    box-shadow: 0 0 20px rgba(245, 108, 108, 0.8);
+    box-shadow: none;
   }
 }
 
 @keyframes fault-pulse {
   0%, 100% {
-    box-shadow: 0 0 0 0 rgba(245, 108, 108, 0.4);
+    box-shadow: none;
   }
   50% {
-    box-shadow: 0 0 0 6px rgba(245, 108, 108, 0);
+    box-shadow: none;
   }
 }
 

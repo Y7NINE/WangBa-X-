@@ -17,7 +17,7 @@ async function bootstrap() {
 
   // CORS配置
   app.enableCors({
-    origin: ['http://localhost:5173', 'http://localhost:3000'],
+    origin: ['http://localhost:5173', 'http://localhost:5180', 'http://127.0.0.1:5173', 'http://127.0.0.1:5180'],
     credentials: true,
   });
 
@@ -42,7 +42,7 @@ async function bootstrap() {
   SwaggerModule.setup('api', app, document);
 
   const port = process.env.PORT || 3000;
-  await app.listen(port);
+  await app.listen(port, process.env.HOST || '127.0.0.1');
   console.log(`应用运行在: http://localhost:${port}`);
   console.log(`API文档: http://localhost:${port}/api`);
 }

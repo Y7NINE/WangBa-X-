@@ -1,73 +1,47 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { CleaningTask } from './cleaning-task.entity';
-import { MachineService } from '../machine/machine.service';
+import { Machine } from '../machine/machine.entity';
+import { Session } from '../billing/session.entity';
+import { localTransaction } from '../../common/local-transaction';
+import { EventsGateway } from '../../common/gateway/events.gateway';
 
 @Injectable()
 export class CleaningService {
-  constructor(
-    @InjectRepository(CleaningTask)
-    private taskRepository: Repository<CleaningTask>,
-    private machineService: MachineService,
-  ) {}
-
-  async findPendingTasks(): Promise<CleaningTask[]> {
-    return this.taskRepository.find({
-      where: { status: 'pending' },
-      order: { createdAt: 'ASC' },
+  constructor(@InjectRepository(CleaningTask) private tasks: Repository<CleaningTask>, private source: DataSource, private events: EventsGateway) {}
+  findPendingTasks() { return this.tasks.find({ where: [{ status: 'pending' }, { status: 'in_progress' }], order: { createdAt: 'ASC' } }); }
+  findCompletedTasks() { return this.tasks.find({ where: { status: 'completed' }, order: { completedAt: 'DESC' }, take: 100 }); }
+  async startCleaning(id: number, cleanerId: number) {
+    const task = await localTransaction(this.source, async manager => {
+      const task = await manager.findOneBy(CleaningTask, { id: Number(id) });
+      if (!task) throw new NotFoundException('任务不存在');
+      if (task.status !== 'pending') throw new BadRequestException('任务已经开始或完成');
+      const machine = await manager.findOneBy(Machine, { id: task.machineId });
+      if (!machine || machine.status !== 'dirty') throw new BadRequestException('只有待清理座位可以开始保洁');
+      const session = await manager.findOne(Session, { where: [{ machineId: machine.id, status: 'active' }, { machineId: machine.id, status: 'paused' }] });
+      if (session) throw new BadRequestException('座位仍在上机，不能清理');
+      Object.assign(task, { status: 'in_progress', cleanerId, startedAt: new Date() });
+      await manager.update(Machine, task.machineId, { status: 'cleaning' });
+      return manager.save(CleaningTask, task);
     });
+    this.events.broadcastMachineUpdate(task.machineId, 'cleaning');
+    return task;
   }
-
-  async findCompletedTasks(): Promise<CleaningTask[]> {
-    return this.taskRepository.find({
-      where: { status: 'completed' },
-      order: { completedAt: 'DESC' },
+  async completeCleaning(id: number) {
+    const task = await localTransaction(this.source, async manager => {
+      const task = await manager.findOneBy(CleaningTask, { id: Number(id) });
+      if (!task) throw new NotFoundException('任务不存在');
+      if (task.status === 'completed') return task;
+      if (task.status !== 'in_progress' || !task.startedAt) throw new BadRequestException('请先开始清理');
+      const machine = await manager.findOneBy(Machine, { id: task.machineId });
+      if (!machine || machine.status !== 'cleaning') throw new BadRequestException('座位状态已变化，请先处理异常');
+      Object.assign(task, { status: 'completed', completedAt: new Date(), duration: Math.ceil((Date.now() - new Date(task.startedAt).getTime()) / 1000) });
+      await manager.update(Machine, task.machineId, { status: 'offline', currentUserId: null as any, sessionId: null as any });
+      return manager.save(CleaningTask, task);
     });
+    this.events.broadcastMachineUpdate(task.machineId, 'offline');
+    return task;
   }
-
-  async startCleaning(id: number, cleanerId: number): Promise<CleaningTask> {
-    const task = await this.taskRepository.findOne({ where: { id } });
-    if (!task) {
-      throw new NotFoundException('任务不存在');
-    }
-
-    task.status = 'in_progress';
-    task.cleanerId = cleanerId;
-    task.startedAt = new Date();
-
-    await this.machineService.updateStatus(task.machineId, 'cleaning');
-
-    return this.taskRepository.save(task);
-  }
-
-  async completeCleaning(id: number): Promise<CleaningTask> {
-    const task = await this.taskRepository.findOne({ where: { id } });
-    if (!task) {
-      throw new NotFoundException('任务不存在');
-    }
-
-    const completedAt = new Date();
-    const duration = Math.ceil(
-      (completedAt.getTime() - task.startedAt.getTime()) / 1000
-    );
-
-    task.status = 'completed';
-    task.completedAt = completedAt;
-    task.duration = duration;
-
-    await this.machineService.updateStatus(task.machineId, 'offline');
-
-    return this.taskRepository.save(task);
-  }
-
-  async createTask(machineId: string): Promise<CleaningTask> {
-    const task = this.taskRepository.create({
-      machineId,
-      status: 'pending',
-      createdAt: new Date(),
-    });
-
-    return this.taskRepository.save(task);
-  }
+  createTask(machineId: string) { return this.tasks.save(this.tasks.create({ machineId, status: 'pending', createdAt: new Date() })); }
 }

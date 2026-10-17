@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Put, Param, Body, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AreaService } from './area.service';
+import { StaffGuard } from '../auth/staff.guard';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @ApiTags('区域管理')
@@ -21,7 +22,7 @@ export class AreaController {
   }
 
   @Post()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, StaffGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: '创建区域（需认证）' })
   create(@Body() data: any) {
@@ -29,7 +30,7 @@ export class AreaController {
   }
 
   @Put(':id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, StaffGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: '更新区域（需认证）' })
   update(@Param('id') id: number, @Body() data: any) {

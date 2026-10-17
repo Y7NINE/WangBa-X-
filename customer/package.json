@@ -5,24 +5,34 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vue-tsc && vite build"
+    "build": "vue-tsc && vite build",
+    "lint": "eslint . --ext .vue,.js,.ts --ignore-path .gitignore",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
-    "vue": "^3.3.4",
-    "vue-router": "^4.2.4",
-    "pinia": "^2.1.4",
-    "axios": "^1.4.0",
-    "element-plus": "^2.3.8",
     "@element-plus/icons-vue": "^2.1.0",
+    "axios": "^1.4.0",
+    "dayjs": "^1.11.9",
+    "element-plus": "^2.3.8",
+    "pinia": "^2.1.4",
     "socket.io-client": "^4.7.0",
-    "dayjs": "^1.11.9"
+    "vue": "^3.3.4",
+    "vue-router": "^4.2.4"
   },
   "devDependencies": {
-    "@vitejs/plugin-vue": "^4.2.3",
-    "vite": "^4.4.4",
-    "typescript": "^5.1.6",
-    "vue-tsc": "^1.8.5",
     "@types/node": "^20.4.5",
-    "sass": "^1.64.1"
+    "@typescript-eslint/eslint-plugin": "^5.59.11",
+    "@typescript-eslint/parser": "^5.59.11",
+    "@vitejs/plugin-vue": "^4.2.3",
+    "@vue/test-utils": "^2.4.11",
+    "eslint": "^8.42.0",
+    "eslint-plugin-vue": "^9.15.0",
+    "happy-dom": "^10.0.3",
+    "sass": "^1.64.1",
+    "typescript": "^5.1.6",
+    "vite": "^4.4.4",
+    "vitest": "^0.34.0",
+    "vue-tsc": "^3.3.13"
   }
 }

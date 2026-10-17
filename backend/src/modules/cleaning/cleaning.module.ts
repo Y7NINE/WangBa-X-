@@ -1,3 +1,4 @@
+import { EventsModule } from '../../common/gateway/events.module';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CleaningService } from './cleaning.service';
@@ -9,6 +10,7 @@ import { MachineModule } from '../machine/machine.module';
   imports: [
     TypeOrmModule.forFeature([CleaningTask]),
     MachineModule,
+    EventsModule,
   ],
   controllers: [CleaningController],
   providers: [CleaningService],

@@ -1,11 +1,12 @@
 <template>
   <div class="login-container">
+    <div class="login-art" aria-hidden="true"><span class="art-caption">网吧 X · 门店手记</span><h2>一席相聚，<br>用心照料。</h2><p>经营有序，来客自在。</p><img src="/ink-landscape.svg" alt="" /></div>
     <div class="login-card">
       <div class="login-header">
-        <h1>网吧综合管理系统</h1>
-        <p>收银台控制台</p>
+        <span class="login-seal" aria-hidden="true">网</span><h1>网吧 X · 工作台</h1>
+        <p>登录门店账户，开始今日事务。</p>
       </div>
-      
+
       <el-form
         ref="formRef"
         :model="form"
@@ -21,7 +22,7 @@
             size="large"
           />
         </el-form-item>
-        
+
         <el-form-item prop="password">
           <el-input
             v-model="form.password"
@@ -33,7 +34,7 @@
             @keyup.enter="handleLogin"
           />
         </el-form-item>
-        
+
         <el-form-item>
           <el-button
             type="primary"
@@ -75,7 +76,7 @@ const rules = {
 const handleLogin = async () => {
   const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) return
-  
+
   loading.value = true
   try {
     await authStore.login(form)
@@ -90,47 +91,11 @@ const handleLogin = async () => {
 </script>
 
 <style scoped lang="scss">
-.login-container {
-  height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-}
-
-.login-card {
-  width: 400px;
-  padding: 40px;
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-}
-
-.login-header {
-  text-align: center;
-  margin-bottom: 32px;
-  
-  h1 {
-    font-size: 24px;
-    color: #303133;
-    margin-bottom: 8px;
-  }
-  
-  p {
-    color: #909399;
-    font-size: 14px;
-  }
-}
-
-.login-form {
-  .el-input {
-    height: 44px;
-  }
-}
-
-.login-btn {
-  width: 100%;
-  height: 44px;
-  font-size: 16px;
-}
+.login-container { min-height:100vh;display:flex;justify-content:center;align-items:center;background:var(--paper);padding:32px;gap:0; }
+.login-art { position:relative;isolation:isolate;width:430px;height:535px;padding:48px 42px;background:var(--paper-deep);border:1px solid var(--rule);overflow:hidden;.art-caption { font:11px var(--font-song);letter-spacing:3px;color:var(--ink-soft); }h2 { position:relative;z-index:1;font:500 37px/1.6 var(--font-song);letter-spacing:5px;margin:37px 0 15px; }p { position:relative;z-index:1;color:var(--ink-muted);font-size:12px;letter-spacing:2px; }img { position:absolute;right:-70px;bottom:-45px;width:450px;max-width:none;z-index:0;opacity:.72; } }
+.login-card { width:390px;min-height:535px;padding:48px 40px;background:var(--paper-light);border:1px solid var(--rule);border-left:0; }
+.login-header { margin-bottom:32px;h1 { font:500 25px var(--font-song);letter-spacing:2px;margin:20px 0 12px; }p { color:var(--ink-muted);font-size:12px;line-height:1.8; } }
+.login-seal { display:grid;place-items:center;width:31px;height:36px;border:1px solid var(--cinnabar);outline:1px solid var(--cinnabar);outline-offset:-4px;font:22px var(--font-song);color:var(--cinnabar);transform:rotate(-3deg); }
+.login-form .el-input { height:44px; }.login-btn { width:100%;height:44px;letter-spacing:5px;margin-top:7px; }
+@media(max-width:760px) { .login-art { display:none; }.login-container { padding:22px; }.login-card { border-left:1px solid var(--rule);min-height:auto;padding:36px 30px;width:390px;max-width:100%; } }
 </style>

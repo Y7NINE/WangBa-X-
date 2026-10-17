@@ -30,8 +30,8 @@ describe('Login Component', () => {
         plugins: [ElementPlus],
       },
     })
-    
-    expect(wrapper.find('h1').text()).toBe('网吧综合管理系统')
+
+    expect(wrapper.find('h1').text()).toBe('网吧 X · 工作台')
     expect(wrapper.find('input[placeholder="请输入用户名"]').exists()).toBe(true)
     expect(wrapper.find('input[placeholder="请输入密码"]').exists()).toBe(true)
   })
@@ -42,13 +42,13 @@ describe('Login Component', () => {
         plugins: [ElementPlus],
       },
     })
-    
+
     const usernameInput = wrapper.find('input[placeholder="请输入用户名"]')
     const passwordInput = wrapper.find('input[placeholder="请输入密码"]')
-    
+
     await usernameInput.setValue('admin')
     await passwordInput.setValue('admin123')
-    
+
     expect((usernameInput.element as HTMLInputElement).value).toBe('admin')
     expect((passwordInput.element as HTMLInputElement).value).toBe('admin123')
   })
@@ -59,7 +59,7 @@ describe('Login Component', () => {
         plugins: [ElementPlus],
       },
     })
-    
+
     const button = wrapper.find('button')
     expect(button.exists()).toBe(true)
     expect(button.text()).toContain('登录')

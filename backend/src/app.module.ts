@@ -15,6 +15,9 @@ import { CleaningModule } from './modules/cleaning/cleaning.module';
 import { ShiftModule } from './modules/shift/shift.module';
 import { BountyModule } from './modules/bounty/bounty.module';
 import { WakeupModule } from './modules/wakeup/wakeup.module';
+import { AnalyticsModule } from './modules/analytics/analytics.module';
+import { SettingModule } from './modules/setting/setting.module';
+import { OrderModule } from './modules/order/order.module';
 import { EventsModule } from './common/gateway/events.module';
 
 @Module({
@@ -46,6 +49,9 @@ import { EventsModule } from './common/gateway/events.module';
     ShiftModule,
     BountyModule,
     WakeupModule,
+    AnalyticsModule,
+    SettingModule,
+    OrderModule,
     EventsModule,
   ],
   controllers: [AppController],

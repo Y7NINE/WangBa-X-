@@ -1,8 +1,12 @@
+import { beforeEach } from 'vitest'
 import { describe, it, expect, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import ElementPlus from 'element-plus'
+import { analyticsApi } from '@/api/analytics'
 import Dashboard from '@/views/dashboard/index.vue'
+
+vi.mock('@/api/analytics', () => ({ analyticsApi: { getOverview: vi.fn().mockResolvedValue({ revenue: 0, sessions: 0, revenueByDay: [] }) } }))
 
 // Mock stores
 vi.mock('@/stores/machine', () => ({
@@ -45,7 +49,7 @@ describe('Dashboard Component', () => {
         },
       },
     })
-    
+
     expect(wrapper.find('.dashboard-container').exists()).toBe(true)
   })
 
@@ -58,7 +62,7 @@ describe('Dashboard Component', () => {
         },
       },
     })
-    
+
     const statCards = wrapper.findAll('.stat-card')
     expect(statCards.length).toBe(4)
   })
@@ -72,7 +76,7 @@ describe('Dashboard Component', () => {
         },
       },
     })
-    
+
     expect(wrapper.find('.chart-row').exists()).toBe(true)
   })
 
@@ -85,7 +89,7 @@ describe('Dashboard Component', () => {
         },
       },
     })
-    
+
     expect(wrapper.find('.alert-panel').exists()).toBe(true)
     expect(wrapper.text()).toContain('实时告警')
   })
@@ -99,8 +103,17 @@ describe('Dashboard Component', () => {
         },
       },
     })
-    
+
     expect(wrapper.find('.area-panel').exists()).toBe(true)
     expect(wrapper.text()).toContain('区域上座率')
   })
+  it('shows server revenue and session counts without invented growth percentages', async () => {
+    vi.mocked(analyticsApi.getOverview).mockResolvedValue({ revenue: 123.45, sessions: 4, hours: 2, occupancyRate: 50, faultCount: 0, activeUsers: 3, revenueByDay: [{ date: '2026-10-17', revenue: 123.45, sessions: 4 }] })
+    const wrapper = mount(Dashboard, { global: { plugins: [ElementPlus], stubs: { VChart: true } } })
+    await flushPromises()
+    expect(wrapper.findAll('.stat-card')[1].text()).toContain('123.45')
+    expect(wrapper.findAll('.stat-card')[2].text()).toContain('4')
+    expect(wrapper.find('.stat-trend').exists()).toBe(false)
+  })
+
 })

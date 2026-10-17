@@ -23,6 +23,9 @@ export class Session {
   @Column({ type: 'datetime', name: 'end_time', nullable: true })
   endTime: Date;
 
+  @Column({ type: 'decimal', precision: 10, scale: 2, name: 'hourly_rate', nullable: true })
+  hourlyRate: number;
+
   @Column({ type: 'int', default: 0 })
   duration: number; // 分钟
 
@@ -35,7 +38,7 @@ export class Session {
   @Column({ type: 'datetime', name: 'paused_at', nullable: true })
   pausedAt: Date;
 
-  @Column({ type: 'int', name: 'paused_duration', default: 0 })
+  @Column({ type: 'float', name: 'paused_duration', default: 0 })
   pausedDuration: number; // 暂停时长（分钟）
 
   @CreateDateColumn({ name: 'created_at' })

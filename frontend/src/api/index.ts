@@ -1,4 +1,4 @@
-import axios from 'axios'
+import axios, { type AxiosRequestConfig } from 'axios'
 import { ElMessage } from 'element-plus'
 
 const api = axios.create({
@@ -28,14 +28,21 @@ api.interceptors.response.use(
   (error) => {
     const message = error.response?.data?.message || '请求失败'
     ElMessage.error(message)
-    
+
     if (error.response?.status === 401) {
       localStorage.removeItem('token')
       window.location.href = '/login'
     }
-    
+
     return Promise.reject(error)
   }
 )
 
-export default api
+interface ApiClient {
+  get<T = any>(url: string, config?: AxiosRequestConfig): Promise<T>
+  post<T = any>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T>
+  patch<T = any>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T>
+  put<T = any>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T>
+  delete<T = any>(url: string, config?: AxiosRequestConfig): Promise<T>
+}
+export default api as unknown as ApiClient

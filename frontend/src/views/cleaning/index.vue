@@ -1,5 +1,5 @@
 <template>
-  <div class="cleaning-container">
+  <div class="cleaning-container" v-loading="loading">
     <!-- 顶部统计 -->
     <div class="stats-bar">
       <el-row :gutter="20">
@@ -38,7 +38,7 @@
         </el-col>
       </el-row>
     </div>
-    
+
     <el-tabs v-model="activeTab">
       <!-- 待清理任务 -->
       <el-tab-pane label="待清理任务" name="pending">
@@ -65,14 +65,14 @@
               </el-button>
             </div>
           </div>
-          
+
           <div v-if="pendingTasks.length === 0" class="empty-state">
-            <el-icon :size="64" color="#67c23a"><CircleCheck /></el-icon>
+            <el-icon :size="64" color="#6e8566"><CircleCheck /></el-icon>
             <p>暂无待清理任务</p>
           </div>
         </div>
       </el-tab-pane>
-      
+
       <!-- 清理中任务 -->
       <el-tab-pane label="清理中" name="processing">
         <div class="task-grid">
@@ -102,14 +102,14 @@
               </el-button>
             </div>
           </div>
-          
+
           <div v-if="processingTasks.length === 0" class="empty-state">
-            <el-icon :size="64" color="#909399"><InfoFilled /></el-icon>
+            <el-icon :size="64" color="#7c8071"><InfoFilled /></el-icon>
             <p>暂无清理中的任务</p>
           </div>
         </div>
       </el-tab-pane>
-      
+
       <!-- 已完成任务 -->
       <el-tab-pane label="已完成" name="completed">
         <el-table :data="completedTasks" stripe>
@@ -152,58 +152,39 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Brush, Loading, CircleCheck, Monitor, VideoPlay, InfoFilled, User } from '@element-plus/icons-vue'
 import { useMachineStore } from '@/stores/machine'
-import { machineApi } from '@/api/machine'
+import { cleaningApi, type CleaningTask } from '@/api/cleaning'
 import dayjs from 'dayjs'
 
 const machineStore = useMachineStore()
 const activeTab = ref('pending')
+const loading = ref(false)
 
-// 从机器数据中获取待清理和清理中的任务
-const cleaningTasks = computed(() => {
-  const tasks: any[] = []
-  let id = 1
-  
-  machineStore.machines.forEach(machine => {
-    if (machine.status === 'dirty') {
-      tasks.push({
-        id: id++,
-        machineId: machine.id,
-        status: 'pending',
-        createdAt: machine.updatedAt || new Date().toISOString(),
-      })
-    } else if (machine.status === 'cleaning') {
-      tasks.push({
-        id: id++,
-        machineId: machine.id,
-        status: 'in_progress',
-        cleanerId: '当前保洁员',
-        startedAt: machine.updatedAt || new Date().toISOString(),
-      })
-    }
-  })
-  
-  return tasks
-})
+// 保洁任务（来自 cleaning API）
+const pendingTasks = ref<CleaningTask[]>([])
+const processingTasks = ref<CleaningTask[]>([])
+const completedTasks = ref<CleaningTask[]>([])
 
-// 已完成任务（模拟数据）
-const completedTasks = ref([
-  { id: 101, machineId: 'A-03', cleanerId: '保洁员1', startedAt: new Date(Date.now() - 600000).toISOString(), completedAt: new Date(Date.now() - 300000).toISOString(), duration: 180 },
-  { id: 102, machineId: 'B-01', cleanerId: '保洁员2', startedAt: new Date(Date.now() - 900000).toISOString(), completedAt: new Date(Date.now() - 600000).toISOString(), duration: 240 },
-])
-
-// 待清理任务
-const pendingTasks = computed(() => 
-  cleaningTasks.value.filter(t => t.status === 'pending')
-)
-
-// 清理中任务
-const processingTasks = computed(() => 
-  cleaningTasks.value.filter(t => t.status === 'in_progress')
-)
+const loadTasks = async () => {
+  loading.value = true
+  try {
+    const [pending, completed] = await Promise.all([
+      cleaningApi.getPendingTasks(),
+      cleaningApi.getCompletedTasks(),
+    ])
+    const active = Array.isArray(pending) ? pending : []
+    pendingTasks.value = active.filter(task => task.status === 'pending')
+    processingTasks.value = active.filter(task => task.status === 'in_progress')
+    completedTasks.value = Array.isArray(completed) ? completed : []
+  } catch (error) {
+    console.error('加载保洁任务失败', error)
+  } finally {
+    loading.value = false
+  }
+}
 
 // 获取机器区域
 const getMachineArea = (machineId: string) => {
@@ -214,15 +195,17 @@ const getMachineArea = (machineId: string) => {
 }
 
 // 格式化时间
-const formatTime = (time: string | undefined) => {
+const formatTime = (time: string | null | undefined) => {
   if (!time) return '-'
   return dayjs(time).format('HH:mm:ss')
 }
 
 // 开始清理
-const handleStartCleaning = async (task: any) => {
+const handleStartCleaning = async (task: CleaningTask) => {
   try {
-    await machineApi.updateStatus(task.machineId, 'cleaning')
+    const started = await cleaningApi.startCleaning(task.id)
+    pendingTasks.value = pendingTasks.value.filter(t => t.id !== task.id)
+    processingTasks.value.unshift(started ?? { ...task, status: 'in_progress', startedAt: new Date().toISOString() })
     await machineStore.fetchMachines()
     ElMessage.success(`已开始清理 ${task.machineId}`)
   } catch (error) {
@@ -231,21 +214,11 @@ const handleStartCleaning = async (task: any) => {
 }
 
 // 完成清理
-const handleCompleteCleaning = async (task: any) => {
+const handleCompleteCleaning = async (task: CleaningTask) => {
   try {
-    await machineApi.updateStatus(task.machineId, 'offline')
-    await machineStore.fetchMachines()
-    
-    // 添加到已完成列表
-    completedTasks.value.unshift({
-      id: Date.now(),
-      machineId: task.machineId,
-      cleanerId: task.cleanerId || '当前保洁员',
-      startedAt: task.startedAt,
-      completedAt: new Date().toISOString(),
-      duration: task.startedAt ? Math.floor((Date.now() - new Date(task.startedAt).getTime()) / 1000) : 0,
-    })
-    
+    await cleaningApi.completeCleaning(task.id)
+    processingTasks.value = processingTasks.value.filter(t => t.id !== task.id)
+    await Promise.all([loadTasks(), machineStore.fetchMachines()])
     ElMessage.success(`${task.machineId} 清理完成`)
   } catch (error) {
     ElMessage.error('操作失败')
@@ -253,8 +226,7 @@ const handleCompleteCleaning = async (task: any) => {
 }
 
 onMounted(async () => {
-  await machineStore.fetchMachines()
-  await machineStore.fetchAreas()
+  await Promise.all([loadTasks(), machineStore.fetchMachines(), machineStore.fetchAreas()])
 })
 </script>
 
@@ -262,80 +234,80 @@ onMounted(async () => {
 .cleaning-container {
   .stats-bar {
     margin-bottom: 20px;
-    
+
     .stat-card {
-      background: #fff;
+      background: var(--paper-light);
       padding: 20px;
-      border-radius: 8px;
+      border-radius: 3px;
       display: flex;
       align-items: center;
       gap: 16px;
-      
+
       .stat-icon {
         width: 56px;
         height: 56px;
-        border-radius: 12px;
+        border-radius: 3px;
         display: flex;
         align-items: center;
         justify-content: center;
         color: #fff;
       }
-      
-      &.pending .stat-icon { background: linear-gradient(135deg, #e6a23c, #ebb563); }
-      &.processing .stat-icon { background: linear-gradient(135deg, #409eff, #66b1ff); }
-      &.completed .stat-icon { background: linear-gradient(135deg, #67c23a, #85ce61); }
-      
+
+      &.pending .stat-icon { background: var(--paper-deep); }
+      &.processing .stat-icon { background: var(--paper-deep); }
+      &.completed .stat-icon { background: var(--paper-deep); }
+
       .stat-content {
         .stat-value {
           font-size: 28px;
           font-weight: bold;
-          color: #303133;
+          color: #292f29;
         }
-        
+
         .stat-label {
           font-size: 14px;
-          color: #909399;
+          color: #7c8071;
         }
       }
     }
   }
-  
+
   .task-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 16px;
     min-height: 200px;
-    
+
     .task-card {
-      background: #fff;
-      border-radius: 12px;
+      background: var(--paper-light);
+      border-radius: 3px;
       padding: 16px;
-      border: 2px solid #e4e7ed;
+      border: 2px solid #dcd6c8;
       transition: all 0.3s;
-      
+
       &.pending {
-        border-color: #e6a23c;
-        background: linear-gradient(135deg, #fdf6ec, #fff);
+        border-color: #a48b55;
+        background: var(--paper-deep);
       }
-      
+
       &.processing {
-        border-color: #409eff;
-        background: linear-gradient(135deg, #ecf5ff, #fff);
+        border-color: #536953;
+        background: var(--paper-deep);
         animation: processing-pulse 2s infinite;
       }
-      
+
       .task-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
         margin-bottom: 16px;
-        
+
         .task-time {
           font-size: 12px;
-          color: #909399;
+          color: #7c8071;
         }
       }
-      
+
       .task-body {
         .machine-info {
           display: flex;
@@ -343,53 +315,53 @@ onMounted(async () => {
           align-items: center;
           gap: 8px;
           padding: 20px 0;
-          
+
           .el-icon {
-            color: #606266;
+            color: #555e52;
           }
-          
+
           .machine-id {
             font-size: 24px;
             font-weight: bold;
-            color: #303133;
+            color: #292f29;
           }
-          
+
           .machine-area {
             font-size: 14px;
-            color: #909399;
+            color: #7c8071;
           }
         }
-        
+
         .cleaner-info {
           display: flex;
           align-items: center;
           justify-content: center;
           gap: 8px;
           padding: 8px;
-          background: #f5f7fa;
+          background: #f4f0e6;
           border-radius: 4px;
           margin-top: 8px;
-          
+
           .el-icon {
-            color: #409eff;
+            color: #536953;
           }
-          
+
           span {
             font-size: 14px;
-            color: #606266;
+            color: #555e52;
           }
         }
       }
-      
+
       .task-footer {
         margin-top: 16px;
-        
+
         .el-button {
           width: 100%;
         }
       }
     }
-    
+
     .empty-state {
       grid-column: 1 / -1;
       display: flex;
@@ -397,8 +369,8 @@ onMounted(async () => {
       align-items: center;
       justify-content: center;
       padding: 40px;
-      color: #909399;
-      
+      color: #7c8071;
+
       p {
         margin-top: 16px;
         font-size: 16px;
@@ -409,10 +381,10 @@ onMounted(async () => {
 
 @keyframes processing-pulse {
   0%, 100% {
-    box-shadow: 0 0 0 0 rgba(64, 158, 255, 0.2);
+    box-shadow: none;
   }
   50% {
-    box-shadow: 0 0 0 8px rgba(64, 158, 255, 0);
+    box-shadow: none;
   }
 }
 </style>

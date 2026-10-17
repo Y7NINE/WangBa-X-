@@ -1,4 +1,4 @@
-import axios from 'axios'
+import axios, { type AxiosRequestConfig } from 'axios'
 
 const api = axios.create({
   baseURL: '/api',
@@ -17,8 +17,15 @@ api.interceptors.response.use(
   (response) => response.data,
   (error) => {
     const message = error.response?.data?.message || '请求失败'
-    return Promise.reject(new Error(message))
+    const errorMessage = Array.isArray(message) ? message.join('；') : message
+    return Promise.reject(Object.assign(new Error(errorMessage), { status: error.response?.status }))
   }
 )
 
-export default api
+// The response interceptor unwraps response.data; expose that actual return type.
+interface ApiClient {
+  get<T = any>(url: string, config?: AxiosRequestConfig): Promise<T>
+  post<T = any>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T>
+  patch<T = any>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T>
+}
+export default api as unknown as ApiClient
