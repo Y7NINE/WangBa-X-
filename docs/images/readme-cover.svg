@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="380" viewBox="0 0 1280 380" fill="none" role="img" aria-labelledby="title desc">
+  <title id="title">此间，正好有位。</title>
+  <desc id="desc">WangBa-X 水墨封面：宣纸、远山、朱砂落日与一叶小舟。</desc>
+  <defs>
+    <linearGradient id="far" x1="890" y1="92" x2="870" y2="337" gradientUnits="userSpaceOnUse"><stop stop-color="#819087" stop-opacity=".49"/><stop offset="1" stop-color="#c5c8b8" stop-opacity=".06"/></linearGradient>
+    <linearGradient id="near" x1="1000" y1="150" x2="986" y2="352" gradientUnits="userSpaceOnUse"><stop stop-color="#42574a" stop-opacity=".62"/><stop offset="1" stop-color="#7d8e7b" stop-opacity=".05"/></linearGradient>
+    <linearGradient id="mist" x1="640" y1="271" x2="1100" y2="271" gradientUnits="userSpaceOnUse"><stop stop-color="#f5f1e7" stop-opacity="0"/><stop offset=".42" stop-color="#f5f1e7" stop-opacity=".9"/><stop offset="1" stop-color="#f5f1e7" stop-opacity="0"/></linearGradient>
+    <filter id="wash" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="1.8"/></filter>
+    <pattern id="paper" width="7" height="9" patternUnits="userSpaceOnUse"><path d="M1 2h1m3 4h1" stroke="#8c8266" stroke-opacity=".07" stroke-width=".65"/></pattern>
+  </defs>
+  <path fill="#f5f1e7" d="M0 0h1280v380H0z"/>
+  <path fill="url(#paper)" d="M0 0h1280v380H0z"/>
+  <path d="M32 32h1216v316H32z" stroke="#bcb5a2" stroke-opacity=".5"/>
+  <path d="M55 32h70M32 55v40m1193 253h-70m93-23v-40" stroke="#89917d" stroke-width="2" stroke-opacity=".7"/>
+  <circle cx="1060" cy="90" r="32" fill="#a65343" opacity=".76"/>
+  <circle cx="1060" cy="90" r="38" stroke="#a65343" stroke-opacity=".12"/>
+  <g filter="url(#wash)">
+    <path d="M625 306c32-25 57-73 89-86 26-10 36 5 55-16 22-23 44-92 69-103 9-4 25 48 37 40 24-15 45-71 59-73 14 13 32 52 48 78 18 29 28 5 45 23 32 34 41 58 66 79 34 28 58 45 86 59v39H625Z" fill="url(#far)"/>
+    <path d="M778 339c36-23 53-49 76-80 16-21 22-13 37-35 15-23 37-73 53-79 13 5 20 50 30 43 16-12 26-34 40-33 15 4 38 41 58 72 16 26 24 17 41 28 20 14 30 44 53 60l41 29H778Z" fill="url(#near)"/>
+  </g>
+  <path d="m899 228 44-82 17 69m-7-34 20 10 40-35 40 66m-39-55 12 50" stroke="#4c6250" stroke-opacity=".18" stroke-width="1.8"/>
+  <path d="M643 280c127-12 237-9 405 2m-425 11c188-12 326 0 535-7" stroke="url(#mist)" stroke-width="22"/>
+  <path d="M645 321c119-13 236-15 377-6m-328 21c157-8 300-4 439-11" stroke="#819180" stroke-opacity=".22"/>
+  <path d="m1043 313 31-3 16 4-32 3Z" fill="#3a5041" opacity=".65"/>
+  <path d="m1067 310 2-20 2 20" stroke="#3a5041" stroke-opacity=".6" stroke-width="1.5"/>
+  <path d="m793 91 7-4 9 2m-33 15 6-3 7 2" stroke="#6d7f6d" stroke-opacity=".5" stroke-linecap="round" stroke-width="1.4"/>
+  <g stroke="#415740" stroke-opacity=".47" stroke-linecap="round">
+    <path d="M1161 335c-3-34-4-67-9-94m7 49-20-19m18 6 16-25m-19 6-16-22m24 71 23-17" stroke-width="2"/>
+    <path d="m1132 266 18 9m-22-12 15 3m26-7 13-17m-13 7 13-9m-45-8 13 15m-17-18 15 8m28 58 17-11m-19 5 14-3" stroke-width="3"/>
+  </g>
+  <g font-family="'Noto Serif CJK SC','Songti SC','SimSun',serif">
+    <path d="M82 75h38v38H82z" stroke="#a65343" stroke-width="1.5"/>
+    <path d="M86 79h30v30H86z" stroke="#a65343" stroke-opacity=".6"/>
+    <text x="101" y="101" text-anchor="middle" fill="#a65343" font-size="23">席</text>
+    <text x="82" y="198" fill="#283b32" font-size="59" letter-spacing="5">此间，正好有位。</text>
+    <text x="85" y="242" fill="#747b68" font-size="17" letter-spacing="4">选座 · 上机 · 茶饮 · 相聚</text>
+    <text x="1206" y="115" fill="#808671" font-size="14" text-anchor="middle"><tspan x="1206" dy="0">山</tspan><tspan x="1206" dy="24">水</tspan><tspan x="1206" dy="24">有</tspan><tspan x="1206" dy="24">闲</tspan><tspan x="1206" dy="34">同</tspan><tspan x="1206" dy="24">游</tspan><tspan x="1206" dy="24">有</tspan><tspan x="1206" dy="24">伴</tspan></text>
+  </g>
+  <text x="139" y="98" fill="#586651" font-family="Georgia,serif" font-size="18" letter-spacing="4">WANGBA / X</text>
+  <path d="M85 279h52" stroke="#a65343" stroke-opacity=".75"/>
+  <text x="85" y="312" fill="#7d826e" font-family="'Microsoft YaHei','Noto Sans CJK SC',sans-serif" font-size="12" letter-spacing="2">水墨界面 / 双端协作 / 本地仿真</text>
+</svg>
