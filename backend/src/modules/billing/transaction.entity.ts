@@ -3,9 +3,11 @@ import {
   PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
+  Index,
 } from 'typeorm';
 
 @Entity('transactions')
+@Index('UQ_transactions_recharge_request_id', ['requestId'], { unique: true })
 export class Transaction {
   @PrimaryGeneratedColumn()
   id: number;
@@ -26,12 +28,15 @@ export class Transaction {
   paymentMethod: string; // cash/wechat/alipay/bonus
 
   @Column({ length: 100, name: 'reference_id', nullable: true })
-  referenceId: string; // 会话ID、订单号�?
+  referenceId: string; // 会话ID或订单编号
   @Column({ type: 'text', nullable: true })
   description: string;
 
   @Column({ name: 'operator_id', nullable: true })
   operatorId: number; // 操作员（收银员）
+
+  @Column({ name: 'request_id', type: 'varchar', length: 36, nullable: true })
+  requestId: string; // 充值请求编号；历史与非充值流水允许为空
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

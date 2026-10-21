@@ -60,7 +60,7 @@
               </div>
             </div>
             <div class="task-footer">
-              <el-button type="primary" @click="handleStartCleaning(task)">
+              <el-button v-if="canStartCleaning(authStore.user)" type="primary" @click="handleStartCleaning(task)">
                 <el-icon><VideoPlay /></el-icon> 开始清理
               </el-button>
             </div>
@@ -97,7 +97,7 @@
               </div>
             </div>
             <div class="task-footer">
-              <el-button type="success" @click="handleCompleteCleaning(task)">
+              <el-button v-if="canCompleteCleaning(authStore.user, task)" type="success" @click="handleCompleteCleaning(task)">
                 <el-icon><CircleCheck /></el-icon> 清理完成
               </el-button>
             </div>
@@ -156,10 +156,13 @@ import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Brush, Loading, CircleCheck, Monitor, VideoPlay, InfoFilled, User } from '@element-plus/icons-vue'
 import { useMachineStore } from '@/stores/machine'
+import { useAuthStore } from '@/stores/auth'
+import { canStartCleaning, canCompleteCleaning } from '@/access'
 import { cleaningApi, type CleaningTask } from '@/api/cleaning'
 import dayjs from 'dayjs'
 
 const machineStore = useMachineStore()
+const authStore = useAuthStore()
 const activeTab = ref('pending')
 const loading = ref(false)
 

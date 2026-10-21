@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AreaService } from './area.service';
 import { StaffGuard } from '../auth/staff.guard';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Roles } from '../auth/roles.decorator';
 
 @ApiTags('区域管理')
 @Controller('areas')
@@ -22,6 +23,7 @@ export class AreaController {
   }
 
   @Post()
+  @Roles('admin', 'manager')
   @UseGuards(JwtAuthGuard, StaffGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: '创建区域（需认证）' })
@@ -30,6 +32,7 @@ export class AreaController {
   }
 
   @Put(':id')
+  @Roles('admin', 'manager')
   @UseGuards(JwtAuthGuard, StaffGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: '更新区域（需认证）' })

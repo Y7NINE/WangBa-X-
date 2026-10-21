@@ -1,12 +1,15 @@
-import { Controller, Get, Post, Patch, Param, Body, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Param, Body, UseGuards, Request, ParseIntPipe } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { CleaningService } from './cleaning.service';
 import { StaffGuard } from '../auth/staff.guard';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Roles } from '../auth/roles.decorator';
+import { EmptyActionDto } from '../../common/empty-action.dto';
 
 @ApiTags('保洁管理')
 @Controller('cleaning')
 @UseGuards(JwtAuthGuard, StaffGuard)
+@Roles('admin', 'manager', 'cashier', 'cleaner')
 @ApiBearerAuth()
 export class CleaningController {
   constructor(private cleaningService: CleaningService) {}
@@ -24,14 +27,16 @@ export class CleaningController {
   }
 
   @Post('tasks/:id/start')
+  @Roles('admin', 'manager', 'cleaner')
   @ApiOperation({ summary: '开始清理' })
-  startCleaning(@Param('id') id: number, @Request() req) {
+  startCleaning(@Param('id', ParseIntPipe) id: number, @Request() req, @Body() _body: EmptyActionDto) {
     return this.cleaningService.startCleaning(id, req.user.id);
   }
 
   @Post('tasks/:id/complete')
+  @Roles('admin', 'manager', 'cleaner')
   @ApiOperation({ summary: '完成清理' })
-  completeCleaning(@Param('id') id: number) {
-    return this.cleaningService.completeCleaning(id);
+  completeCleaning(@Param('id', ParseIntPipe) id: number, @Request() req, @Body() _body: EmptyActionDto) {
+    return this.cleaningService.completeCleaning(id, req.user);
   }
 }

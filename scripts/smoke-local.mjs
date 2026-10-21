@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { randomUUID } from 'node:crypto';
 const base = process.env.LOCAL_API || 'http://127.0.0.1:3000';
 const checks = [];
 async function call(path, { method = 'GET', token, body, status = 200 } = {}) {
@@ -18,7 +19,7 @@ try {
   let a = await call('/auth/customer/login', { method: 'POST', body: { phone: `1389${suffix}`, code: '123456' }, status: 201 });
   let b = await call('/auth/customer/login', { method: 'POST', body: { phone: `1399${suffix}`, code: '123456' }, status: 201 });
   const profile = token => call('/auth/customer/profile', { token });
-  const recharge = (id, amount) => call('/billing/recharge', { method: 'POST', token: admin, body: { userId: id, amount, paymentMethod: 'demo' }, status: 201 });
+  const recharge = (id, amount) => call('/billing/recharge', { method: 'POST', token: admin, body: { requestId: randomUUID(), userId: id, amount, paymentMethod: 'demo' }, status: 201 });
   const seats = (await call('/machines')).filter(machine => machine.status === 'offline');
   assert.ok(seats.length >= 2, '至少需要2个空闲座位');
   await check('错误验证码与非法手机号被拒绝', async () => {
@@ -27,7 +28,7 @@ try {
   });
   await check('余额不足无法上机，负数充值被拒绝', async () => {
     await call('/billing/sessions', { method: 'POST', token: a.token, body: { userId: a.user.id, machineId: seats[0].id }, status: 400 });
-    await call('/billing/recharge', { method: 'POST', token: admin, body: { userId: a.user.id, amount: -1, paymentMethod: 'demo' }, status: 400 });
+    await call('/billing/recharge', { method: 'POST', token: admin, body: { requestId: randomUUID(), userId: a.user.id, amount: -1, paymentMethod: 'demo' }, status: 400 });
     await recharge(a.user.id, 100); await recharge(b.user.id, 100);
   });
   await check('顾客不能充值、读取用户表或更改机器状态', async () => {
@@ -65,7 +66,8 @@ try {
   let order;
   await check('服务端商品定价，订单扣款与退款各只发生一次', async () => {
     const before = Number((await profile(a.token)).balance);
-    order = await call('/orders', { method: 'POST', token: a.token, body: { userId: b.user.id, items: JSON.stringify([{ itemId: 5, name: '篡改名称', price: 0.01, qty: 1 }]), total: 0.01 }, status: 201 });
+    await call('/orders', { method: 'POST', token: a.token, body: { requestId: randomUUID(), items: [{ itemId: 5, qty: 1 }], total: 0.01 }, status: 400 });
+    order = await call('/orders', { method: 'POST', token: a.token, body: { requestId: randomUUID(), userId: b.user.id, items: [{ itemId: 5, qty: 1 }] }, status: 201 });
     assert.equal(order.userId, a.user.id); assert.equal(Number(order.total), 6);
     assert.equal(Number((await profile(a.token)).balance), before - 6);
     assert.equal((await call('/orders', { token: b.token })).length, 0);
@@ -73,11 +75,11 @@ try {
     await call(`/orders/${order.id}/status`, { method: 'PATCH', token: admin, body: { status: 'completed' }, status: 400 });
     await Promise.all([1, 2].map(() => call(`/orders/${order.id}/status`, { method: 'PATCH', token: admin, body: { status: 'cancelled' } })));
     assert.equal(Number((await profile(a.token)).balance), before);
-    await call('/orders', { method: 'POST', token: a.token, body: { items: 'invalid' }, status: 400 });
-    await call('/orders', { method: 'POST', token: a.token, body: { items: JSON.stringify([{ itemId: 5, qty: -1 }]) }, status: 400 });
+    await call('/orders', { method: 'POST', token: a.token, body: { requestId: randomUUID(), items: 'invalid' }, status: 400 });
+    await call('/orders', { method: 'POST', token: a.token, body: { requestId: randomUUID(), items: [{ itemId: 5, qty: -1 }] }, status: 400 });
   });
   await check('点单正常履约：待接单→制作→配送→完成', async () => {
-    const row = await call('/orders', { method: 'POST', token: a.token, body: { items: JSON.stringify([{ itemId: 4, qty: 1 }]) }, status: 201 });
+    const row = await call('/orders', { method: 'POST', token: a.token, body: { requestId: randomUUID(), items: [{ itemId: 4, qty: 1 }] }, status: 201 });
     for (const status of ['preparing', 'delivering', 'completed']) await call(`/orders/${row.id}/status`, { method: 'PATCH', token: admin, body: { status } });
   });
   let ticket;
@@ -115,7 +117,7 @@ try {
       await call(`/cleaning/tasks/${task.id}/complete`, { method: 'POST', token: admin, status: 201 });
       assert.equal((await call(`/machines/${machine.id}`)).status, 'offline');
     }
-    await call('/orders', { method: 'POST', token: a.token, body: { items: JSON.stringify([{ itemId: 5, qty: 1 }]) }, status: 400 });
+    await call('/orders', { method: 'POST', token: a.token, body: { requestId: randomUUID(), items: [{ itemId: 5, qty: 1 }] }, status: 400 });
   });
   await check('员工资料不返回密码，报表日期过滤与退款净额正确', async () => {
     const staff = await call('/auth/profile', { token: admin });

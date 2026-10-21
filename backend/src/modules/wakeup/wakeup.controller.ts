@@ -1,11 +1,15 @@
-import { Controller, Get, Post, Delete, Param, Body, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Param, Body, UseGuards, Request, ParseIntPipe } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { WakeupService } from './wakeup.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
+import { CreateWakeupDto } from './wakeup.dto';
 
 @ApiTags('智能唤醒')
 @Controller('wakeup')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('customer')
 @ApiBearerAuth()
 export class WakeupController {
   constructor(private wakeupService: WakeupService) {}
@@ -18,13 +22,13 @@ export class WakeupController {
 
   @Post('configs')
   @ApiOperation({ summary: '创建唤醒配置' })
-  create(@Body() data: any, @Request() req) {
-    return this.wakeupService.create({ ...data, userId: req.user.id });
+  create(@Body() data: CreateWakeupDto, @Request() req) {
+    return this.wakeupService.create(req.user.id, data);
   }
 
   @Delete('configs/:id')
   @ApiOperation({ summary: '取消唤醒' })
-  cancel(@Param('id') id: number) {
-    return this.wakeupService.cancel(id);
+  cancel(@Param('id', ParseIntPipe) id: number, @Request() req) {
+    return this.wakeupService.cancel(id, req.user.id);
   }
 }

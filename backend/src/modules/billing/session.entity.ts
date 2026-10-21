@@ -38,6 +38,9 @@ export class Session {
   @Column({ type: 'datetime', name: 'paused_at', nullable: true })
   pausedAt: Date;
 
+  @Column({ type: 'datetime', name: 'settlement_requested_at', nullable: true })
+  settlementRequestedAt: Date; // 首次欠费结算申请；duration/amount为固定账单
+
   @Column({ type: 'float', name: 'paused_duration', default: 0 })
   pausedDuration: number; // 暂停时长（分钟）
 

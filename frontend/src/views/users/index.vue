@@ -90,6 +90,7 @@
       title="用户充值"
       width="450px"
     >
+      <el-alert v-if="pending || storageError" :title="storageError || '原充值结果待确认，请勿重复收款；点击下方按钮确认或安全重试。'" type="warning" :closable="false" />
       <div v-if="currentUser" class="recharge-form">
         <div class="user-info">
           <el-avatar :size="48" icon="User" />
@@ -99,7 +100,7 @@
           </div>
         </div>
 
-        <el-form :model="rechargeForm" label-width="80px">
+        <el-form :model="rechargeForm" label-width="80px" :disabled="!!pending || recharging">
           <el-form-item label="充值金额">
             <el-input-number
               v-model="rechargeForm.amount"
@@ -150,8 +151,8 @@
 
       <template #footer>
         <el-button @click="rechargeVisible = false">取消</el-button>
-        <el-button type="primary" @click="submitRecharge" :loading="recharging">
-          确认充值
+        <el-button type="primary" @click="submitRecharge" :loading="recharging" :disabled="!!storageError">
+          {{ pending ? '确认结果 / 重试原充值' : '确认充值' }}
         </el-button>
       </template>
     </el-dialog>
@@ -163,14 +164,14 @@ import type { TagProps } from 'element-plus'
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Search, Wallet } from '@element-plus/icons-vue'
-import { billingApi } from '@/api/billing'
 import { userApi, type User } from '@/api/user'
+import { useRecharge } from '@/composables/useRecharge'
 
 const searchKey = ref('')
 const users = ref<User[]>([])
 const detailVisible = ref(false)
 const rechargeVisible = ref(false)
-const recharging = ref(false)
+const { pending, busy: recharging, storageError, restore, submit } = useRecharge()
 const currentUser = ref<User | null>(null)
 
 const rechargeForm = ref({
@@ -228,10 +229,15 @@ const handleDetail = (user: User) => {
 
 // 打开充值
 const handleRecharge = (user: User) => {
+  restore()
+  if (pending.value && pending.value.userId !== user.id) {
+    ElMessage.warning(`请先到计费管理确认会员 ${pending.value.userId} 的原充值结果`)
+    return
+  }
   currentUser.value = user
   rechargeForm.value = {
-    amount: 100,
-    paymentMethod: 'cash',
+    amount: pending.value?.amount ?? 100,
+    paymentMethod: pending.value?.paymentMethod ?? 'cash',
     remark: '',
   }
   rechargeVisible.value = true
@@ -239,28 +245,23 @@ const handleRecharge = (user: User) => {
 
 // 提交充值
 const submitRecharge = async () => {
-  if (!currentUser.value) return
+  if (!currentUser.value || recharging.value) return
 
-  recharging.value = true
+  const member = currentUser.value
   try {
-    await billingApi.recharge(
-      currentUser.value.id,
-      rechargeForm.value.amount,
-      rechargeForm.value.paymentMethod
-    )
+    const receipt = await submit({ userId: member.id, amount: rechargeForm.value.amount,
+      paymentMethod: rechargeForm.value.paymentMethod })
 
     // 更新本地数据
-    currentUser.value.balance += rechargeForm.value.amount
+    member.balance = Number(receipt.balanceAfter)
 
-    ElMessage.success(`充值成功！已为 ${currentUser.value.nickname} 充值 ¥${rechargeForm.value.amount}`)
+    ElMessage.success(`充值已确认！会员 ${member.nickname}，金额 ¥${receipt.amount}`)
     rechargeVisible.value = false
 
     // 重新加载数据
     await loadUsers()
-  } catch (error) {
-    ElMessage.error('充值失败')
-  } finally {
-    recharging.value = false
+  } catch (error: any) {
+    ElMessage.error(error.message || '充值结果尚未确认，请勿重复收款')
   }
 }
 

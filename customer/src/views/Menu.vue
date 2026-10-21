@@ -1,12 +1,13 @@
 <template>
   <div class="menu-container">
     <div class="nav-bar"><el-button text @click="$router.push('/')"><el-icon><ArrowLeft /></el-icon> 返回</el-button><h3>茶饮与小食</h3><el-button text @click="loadOrders">刷新</el-button></div>
-    <p class="service-note">{{ userStore.currentSession ? `配送座位 ${userStore.currentSession.machineId} · 从账户余额扣款` : '先选座上机，即可点单送到座位。' }}</p>
+    <p class="service-note">{{ userStore.currentSession?.settlementRequestedAt ? '当前会话已停计费，请先补款完成结算。' : userStore.currentSession ? `配送座位 ${userStore.currentSession.machineId} · 从账户余额扣款` : '先选座上机，即可点单送到座位。' }}</p>
+    <p v-if="pending || storageError" class="service-note" role="alert">{{ storageError || '上次点单结果待确认，请先确认原订单，勿重复付款。' }} <el-button v-if="pending && !storageError" text :loading="submitting" @click="submitOrder">确认原订单</el-button></p>
     <p v-if="loadError" class="service-note" role="alert">{{ loadError }} <el-button text @click="loadMenu">重试</el-button></p>
     <p v-else-if="loading" class="service-note" role="status">正在准备菜单…</p>
-    <div class="menu-list"><div v-for="item in menuItems" :key="item.id" class="menu-item"><div class="item-image"><el-icon :size="28"><Coffee /></el-icon></div><div class="item-info"><div class="item-name">{{ item.name }}</div><div class="item-desc">{{ item.description }}</div><div class="item-price">¥{{ item.price }}</div></div><div class="quantity-controls"><button v-if="quantity(item.id)" :aria-label="`减少${item.name}`" @click="removeFromCart(item.id)">−</button><span v-if="quantity(item.id)">{{ quantity(item.id) }}</span><button :aria-label="`添加${item.name}`" :disabled="submitting || quantity(item.id) >= 20" @click="addToCart(item)">＋</button></div></div></div>
+    <div class="menu-list"><div v-for="item in menuItems" :key="item.id" class="menu-item"><div class="item-image"><el-icon :size="28"><Coffee /></el-icon></div><div class="item-info"><div class="item-name">{{ item.name }}</div><div class="item-desc">{{ item.description }}</div><div class="item-price">¥{{ item.price }}</div></div><div class="quantity-controls"><button v-if="quantity(item.id)" :aria-label="`减少${item.name}`" :disabled="cartLocked" @click="removeFromCart(item.id)">−</button><span v-if="quantity(item.id)">{{ quantity(item.id) }}</span><button :aria-label="`添加${item.name}`" :disabled="cartLocked || quantity(item.id) >= 20" @click="addToCart(item)">＋</button></div></div></div>
     <section class="order-history"><header><h3>我的点单</h3><small>共 {{ orders.length }} 单</small></header><p v-if="!userStore.isLoggedIn" class="service-note">登录后查看点单记录。</p><p v-else-if="!orders.length" class="service-note">还没有订单，选一杯喜欢的吧。</p><article v-for="order in orders" :key="order.id" class="order-row"><header><strong>#{{ order.id }} · {{ order.machineId }}</strong><span>{{ statusNames[order.status] || order.status }}</span></header><p>{{ orderSummary(order.items) }}</p><small>¥{{ Number(order.total).toFixed(2) }} · {{ new Date(order.createdAt).toLocaleString('zh-CN', { hour12: false }) }}</small></article></section>
-    <div v-if="cart.length > 0" class="cart-bar"><div class="cart-info"><span>共 {{ cartCount }} 件</span><span class="cart-total">¥{{ cartTotal.toFixed(2) }}</span></div><el-button type="primary" :loading="submitting" :disabled="!userStore.currentSession" @click="submitOrder">余额支付下单</el-button></div>
+    <div v-if="cart.length > 0" class="cart-bar"><div class="cart-info"><span>共 {{ cartCount }} 件</span><span class="cart-total">¥{{ cartTotal.toFixed(2) }}</span></div><el-button type="primary" :loading="submitting" :disabled="!userStore.currentSession || !!pending || !!storageError" @click="submitOrder">余额支付下单</el-button></div>
   </div>
 </template>
 <script setup lang="ts">
@@ -15,6 +16,7 @@ import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 import api from '@/api'
 import { orderApi, type Order } from '@/api/order'
+import { useOrderRequest } from '@/composables/useOrderRequest'
 const userStore = useUserStore()
 interface MenuItem { id: number; name: string; description: string; price: number }
 interface CartItem extends MenuItem { quantity: number }
@@ -23,26 +25,31 @@ const cart = ref<CartItem[]>([])
 const orders = ref<Order[]>([])
 const loading = ref(false)
 const loadError = ref('')
-const submitting = ref(false)
+const { pending, busy: submitting, storageError, submit } = useOrderRequest()
+const cartLocked = computed(() => submitting.value || !!pending.value || !!storageError.value || !!userStore.currentSession?.settlementRequestedAt)
 const statusNames: Record<string, string> = { pending: '待接单', preparing: '制作中', delivering: '配送中', completed: '已送达', cancelled: '已取消并退回余额' }
 const cartCount = computed(() => cart.value.reduce((sum, item) => sum + item.quantity, 0))
 const cartTotal = computed(() => cart.value.reduce((sum, item) => sum + item.price * item.quantity, 0))
 const quantity = (id: number) => cart.value.find(item => item.id === id)?.quantity || 0
-const addToCart = (item: MenuItem) => { const existing = cart.value.find(row => row.id === item.id); if (existing) existing.quantity++; else cart.value.push({ ...item, quantity: 1 }) }
-const removeFromCart = (id: number) => { const item = cart.value.find(item => item.id === id); if (item && !submitting.value) { item.quantity--; cart.value = cart.value.filter(item => item.quantity > 0) } }
+const addToCart = (item: MenuItem) => { if (cartLocked.value) return; const existing = cart.value.find(row => row.id === item.id); if (existing) existing.quantity++; else cart.value.push({ ...item, quantity: 1 }) }
+const removeFromCart = (id: number) => { const item = cart.value.find(item => item.id === id); if (item && !cartLocked.value) { item.quantity--; cart.value = cart.value.filter(item => item.quantity > 0) } }
 const orderSummary = (items: string) => { try { return JSON.parse(items).map((item: any) => `${item.name} × ${item.qty}`).join('、') } catch { return '商品明细暂不可用' } }
 async function loadMenu() { loading.value = true; loadError.value = ''; try { menuItems.value = await api.get('/menu') } catch (error: any) { loadError.value = error.message } finally { loading.value = false } }
 async function loadOrders() { if (!userStore.isLoggedIn) return; try { orders.value = await orderApi.getOrders() } catch (error: any) { ElMessage.error(error.message) } }
 async function submitOrder() {
-  if (submitting.value || !cart.value.length) return
-  if (!userStore.currentSession) { ElMessage.warning('请先选座上机'); return }
-  submitting.value = true
+  if (submitting.value || (!pending.value && !cart.value.length)) return
+  if (!pending.value && !userStore.currentSession) { ElMessage.warning('请先选座上机'); return }
+  if (!pending.value && userStore.currentSession?.settlementRequestedAt) { ElMessage.warning('请先补款完成结算'); return }
   try {
-    const order = await orderApi.createOrder({ userId: userStore.user!.id, machineId: userStore.currentSession.machineId, items: cart.value.map(item => ({ itemId: item.id, name: item.name, price: item.price, qty: item.quantity })), total: cartTotal.value })
+    const saved = pending.value
+    const order = await submit(saved
+      ? { items: saved.items.map(item => ({ itemId: item.itemId, qty: item.qty })), remark: saved.remark }
+      : { items: cart.value.map(item => ({ itemId: item.id, qty: item.quantity })) })
     cart.value = []
-    await Promise.all([loadOrders(), userStore.refreshProfile()])
-    ElMessage.success(`订单 #${order.id} 已提交，请在下方查看配送进度`)
-  } catch (error: any) { ElMessage.error(error.message || '下单失败') } finally { submitting.value = false }
+    ElMessage.success(order.status === 'cancelled' ? `订单 #${order.id} 已取消并退回余额` : `订单 #${order.id} 已确认，请在下方查看配送进度`)
+    const refreshed = await Promise.allSettled([loadOrders(), userStore.refreshProfile()])
+    if (refreshed.some(result => result.status === 'rejected')) ElMessage.warning('订单已确认，资料刷新失败，请稍后刷新')
+  } catch (error: any) { ElMessage.error(error.message || '点单结果尚未确认，请勿重复付款') }
 }
 let timer: number | undefined
 onMounted(() => { loadMenu(); loadOrders(); timer = window.setInterval(loadOrders, 15000) })

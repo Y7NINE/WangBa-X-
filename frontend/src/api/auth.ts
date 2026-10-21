@@ -5,14 +5,16 @@ export interface LoginParams {
   password: string
 }
 
-export interface LoginResult {
-  token: string
-  user: {
+export interface StaffProfile {
     id: number
     username: string
     name: string
     role: string
-  }
+}
+
+export interface LoginResult {
+  token: string
+  user: StaffProfile
 }
 
 export const authApi = {
@@ -25,6 +27,6 @@ export const authApi = {
   },
   
   getProfile() {
-    return api.get('/auth/profile')
+    return api.get<StaffProfile>('/auth/profile')
   },
 }

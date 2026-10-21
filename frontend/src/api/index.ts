@@ -27,9 +27,10 @@ api.interceptors.response.use(
   },
   (error) => {
     const message = error.response?.data?.message || '请求失败'
-    ElMessage.error(message)
+    if (!error.config?.silentError) ElMessage.error(message)
 
-    if (error.response?.status === 401) {
+    const currentToken = localStorage.getItem('token')
+    if (error.response?.status === 401 && currentToken && error.config?.headers?.Authorization === `Bearer ${currentToken}`) {
       localStorage.removeItem('token')
       window.location.href = '/login'
     }
@@ -38,11 +39,12 @@ api.interceptors.response.use(
   }
 )
 
+interface ApiConfig extends AxiosRequestConfig { silentError?: boolean }
 interface ApiClient {
-  get<T = any>(url: string, config?: AxiosRequestConfig): Promise<T>
-  post<T = any>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T>
-  patch<T = any>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T>
-  put<T = any>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T>
-  delete<T = any>(url: string, config?: AxiosRequestConfig): Promise<T>
+  get<T = any>(url: string, config?: ApiConfig): Promise<T>
+  post<T = any>(url: string, data?: unknown, config?: ApiConfig): Promise<T>
+  patch<T = any>(url: string, data?: unknown, config?: ApiConfig): Promise<T>
+  put<T = any>(url: string, data?: unknown, config?: ApiConfig): Promise<T>
+  delete<T = any>(url: string, config?: ApiConfig): Promise<T>
 }
 export default api as unknown as ApiClient

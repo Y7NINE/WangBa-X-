@@ -12,6 +12,8 @@ export interface FaultTicket {
   newMachineId?: string
   playerAction?: string
   handlerId?: number
+  resolvedBy?: number | null
+  transferredBy?: number | null
   createdAt: string
   timeoutAt?: string
 }
@@ -41,17 +43,17 @@ export const faultApi = {
 
   // 接单
   acceptTicket(id: string) {
-    return api.patch(`/faults/tickets/${id}/accept`)
+    return api.patch<FaultTicket>(`/faults/tickets/${id}/accept`)
   },
 
   // 标记修复
   resolveTicket(id: string, data: { resolution: string; note?: string }) {
-    return api.patch(`/faults/tickets/${id}/resolve`, data)
+    return api.patch<FaultTicket>(`/faults/tickets/${id}/resolve`, data)
   },
 
   // 申请换机
   transferTicket(id: string, newMachineId: string) {
-    return api.patch(`/faults/tickets/${id}/transfer`, { newMachineId })
+    return api.patch<FaultTicket>(`/faults/tickets/${id}/transfer`, { newMachineId })
   },
 
   // 获取故障类型

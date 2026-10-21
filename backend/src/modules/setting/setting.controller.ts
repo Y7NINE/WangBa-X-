@@ -3,10 +3,12 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { SettingService } from './setting.service';
 import { StaffGuard } from '../auth/staff.guard';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Roles } from '../auth/roles.decorator';
 
 @ApiTags('系统设置')
 @Controller('settings')
 @UseGuards(JwtAuthGuard, StaffGuard)
+@Roles('admin', 'manager')
 @ApiBearerAuth()
 export class SettingController {
   constructor(private settingService: SettingService) {}

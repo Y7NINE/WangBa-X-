@@ -1,6 +1,7 @@
 import api from './index'
 
 export interface Session {
+  settlementRequestedAt?: string | null
   id: number
   userId: number
   machineId: string
@@ -20,6 +21,15 @@ export interface Transaction {
   paymentMethod?: string
   description?: string
   createdAt: string
+  requestId?: string
+  operatorId?: number
+}
+
+export interface RechargeCommand {
+  requestId: string
+  userId: number
+  amount: number
+  paymentMethod: string
 }
 
 export const billingApi = {
@@ -35,7 +45,7 @@ export const billingApi = {
   
   // 结束会话
   endSession(id: number) {
-    return api.patch<Session>(`/billing/sessions/${id}/end`)
+    return api.patch<Session>(`/billing/sessions/${id}/end`, undefined, { silentError: true })
   },
   
   // 暂停会话
@@ -54,7 +64,10 @@ export const billingApi = {
   },
   
   // 充值
-  recharge(userId: number, amount: number, paymentMethod: string) {
-    return api.post('/billing/recharge', { userId, amount, paymentMethod })
+  recharge(command: RechargeCommand) {
+    return api.post<Transaction>('/billing/recharge', command, { silentError: true })
+  },
+  getRechargeResult(requestId: string) {
+    return api.get<Transaction>(`/billing/recharges/${requestId}`, { silentError: true })
   },
 }

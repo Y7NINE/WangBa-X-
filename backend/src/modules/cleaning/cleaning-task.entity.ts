@@ -27,6 +27,9 @@ export class CleaningTask {
   @Column({ type: 'datetime', name: 'completed_at', nullable: true })
   completedAt: Date;
 
+  @Column({ name: 'completed_by', nullable: true })
+  completedBy: number;
+
   @Column({ type: 'int', nullable: true })
   duration: number;
 }

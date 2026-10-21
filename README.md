@@ -2,70 +2,91 @@
 
 # WangBa-X
 
-**水墨风网吧服务与管理系统**
+**水墨风网吧服务与管理系统 · 全栈项目实践**
 
-<img src="docs/images/readme-cover.svg" alt="此间，正好有位。WangBa-X 水墨山水封面" width="100%">
+<img src="docs/images/readme-cover.svg" alt="此间，正好有位。水墨山水项目封面" width="100%">
 
-从顾客找到一个好座位，到员工照看好每一席。<br>
-让选座、上机、茶饮、报修与门店日常，在同一套系统里顺畅衔接。
+Vue 3 · TypeScript · Pinia · NestJS · TypeORM · Socket.IO · SQLite
 
-<code>Vue 3 + TypeScript</code> · <code>NestJS + Socket.IO</code><br>
-<code>SQLite · 本地仿真</code> · <code>Node.js 22+</code>
-
-[界面一览](#界面一览) · [快速开始](#快速开始) · [功能与流程](#功能与流程) · [开发与验证](#开发与验证) · [文档导航](#文档导航)
+[界面展示](#界面展示) · [工程亮点](#工程亮点) · [快速运行](#快速运行) · [验证记录](#验证记录) · [项目文档](#项目文档)
 
 </div>
 
-> **当前版本 · 本地演示 / 持续开发**<br>
-> 提供可运行的双端业务仿真。演示余额不是实际资金；真实支付、短信、实名核验与电脑硬件控制尚未接入。
+从选座上机、席间点单，到报修换机、下机结算与保洁，连接顾客自助端和员工工作台。项目以**业务状态、账户一致性、权限边界和失败恢复**为核心，适合用于全栈开发的代码展示与面试讲解。
 
-## 界面一览
+> 当前为本机单进程演示项目。余额为演示资金；真实支付、短信、实名核验和电脑硬件控制尚未接入。Docker、PostgreSQL 和多实例部署尚未验收，不代表可直接生产上线。
 
-### 管理端 · 一席之间，尽在眼前
+## 界面展示
 
-宣纸底色、墨色文字、松绿操作与朱砂状态，贯穿工作台、表格和弹窗。今日营收、人次与趋势读取后端统计接口。
+### 员工工作台
 
-<a href="docs/images/ink-admin-dashboard.png"><img src="docs/images/ink-admin-dashboard.png" alt="水墨管理端：门店营收、座位状态与待办概览" width="100%"></a>
+宣纸底色、宋体标题、松绿操作和朱砂提示贯穿表格、弹窗与图表。大盘从后端读取营收与座位统计，菜单与操作按员工岗位显示。
 
-### 顾客端 · 找个座，开一局
+<a href="docs/images/ink-admin-dashboard.png"><img src="docs/images/ink-admin-dashboard.png" alt="管理端水墨工作台：营收、上机人数与座位状态" width="100%"></a>
 
-首页进入选座、茶饮和报修；大厅选座支持区域筛选、实时状态与列表切换。**大厅为示意布局，实际位置以门店为准。**
+### 顾客自助端
 
 <table>
-  <tr>
-    <th width="50%">顾客首页 · 选座与服务入口</th>
-    <th width="50%">大厅选座 · 分区与座位状态</th>
-  </tr>
-  <tr>
-    <td><a href="docs/images/local-home.png"><img src="docs/images/local-home.png" alt="顾客首页：水墨山水、空位信息与服务入口" width="100%"></a></td>
-    <td><a href="docs/images/ink-hall.png"><img src="docs/images/ink-hall.png" alt="大厅示意：入口、服务台、座位分区及故障状态" width="100%"></a></td>
-  </tr>
+<tr><th width="50%">此间，正好有位</th><th width="50%">分区选座</th></tr>
+<tr><td><img src="docs/images/local-home.png" alt="顾客首页：空位、选座、茶饮、报修与账户入口" width="100%"></td><td><img src="docs/images/ink-hall.png" alt="大厅示意：区域、座位状态和价格" width="100%"></td></tr>
+<tr><th>茶饮点单</th><th>故障报修</th></tr>
+<tr><td><img src="docs/images/local-menu.png" alt="顾客茶饮菜单与购物车" width="100%"></td><td><img src="docs/images/local-repair.png" alt="顾客故障类型选择与报修记录" width="100%"></td></tr>
 </table>
 
-<div align="center"><sub>点击截图可查看原图 · 截图来自本地仿真环境</sub></div>
-
 <details>
-<summary><strong>展开更多界面：管理登录、订单履约与操作弹窗</strong></summary>
+<summary>更多界面：管理登录、订单履约与操作弹窗</summary>
 
-#### 管理登录
-
-![管理端登录页：水墨山水与账号登录](docs/images/ink-admin-login.png)
-
-#### 订单履约
-
-![管理端订单：待接单、制作、配送与完成状态](docs/images/ink-admin-orders.png)
-
-#### 表单与弹窗
-
-![管理端弹窗：统一纸色、墨色与松绿按钮](docs/images/ink-admin-dialog.png)
-
-更多操作实拍见 [本地仿真操作手册](docs/06-local-simulation.md)；仓库中的“网吧管理系统效果图”和“网吧用户端效果图”目录为旧版演示截图。
+![管理登录](docs/images/ink-admin-login.png)
+![订单履约](docs/images/ink-admin-orders.png)
+![操作弹窗](docs/images/ink-admin-dialog.png)
 
 </details>
 
-## 快速开始
+**截图说明**：以上为仓库保留的2026年10月17日本地演示实拍，数据不代表真实门店。近期权限变更已隐藏交接班、悬赏和唤醒导航，旧截图中的这些菜单不代表当前入口；大厅为示意布局。2026年10月21日内置浏览器白屏尚未完成视觉复验，没有把旧图标成新版本截图。最新行为以代码、[验证记录](docs/validation-report.md)和[能力边界](docs/project-showcase.md)为准。
 
-准备 **Node.js 22+、npm 和 Git**。首次安装需要联网下载依赖，SQLite 使用 `better-sqlite3` 原生模块。
+## 工程亮点
+
+| 业务难点 | 已实现的处理 | 可追溯证据 |
+| --- | --- | --- |
+| 客户端篡改余额或操作员 | 请求DTO与会员字段白名单；专用充值接口记录真实员工；顾客与员工身份隔离 | [权限与账户接口回归](backend/test/security-authorization.e2e-spec.ts) |
+| 重试导致重复充值、重复点单 | UUID请求键、内容一致性检查、原请求结果查询；双端保留待确认请求 | [充值](docs/recharge-idempotency.md) / [订单幂等](docs/order-idempotency.md) |
+| 余额不足结算后账单继续上涨 | 首次欠费申请固定账单并暂停计费，补款后按原账单结算；座位继续占用 | [低余额结算](docs/low-balance-settlement.md) |
+| 故障处理与会话、机器脱节 | 报修绑定当前会话，换机原子迁移；原机器继续维修，离场维修后创建保洁 | [工单服务](backend/src/modules/fault/fault.service.ts) |
+| 实时通知泄露给其他会员 | Socket握手验证、服务端授权订阅、本人房间隔离；入站和推送前重查身份 | [真实Socket回归](backend/test/socket-authorization.e2e-spec.ts) |
+| 重连、换账号、请求乱序覆盖新状态 | 管理端先订阅再获取快照；在途去重，拒绝旧身份响应，加载中重放实时变化 | [Socket与恢复协议](docs/socket-authorization.md) |
+
+这些能力已做定向验证，仍有明确范围：HTTP令牌即时撤销、完整审计、订单推送、顾客业务状态补偿和生产数据库并发约束尚待完善。
+
+## 系统架构
+
+![当前已验证的系统架构](docs/images/system-architecture.svg)
+
+两套Vue应用共用一个NestJS后端。REST负责业务状态变更，Socket负责已提交结果的通知；本地事务队列协调同进程SQLite写入。通知传输失败不回滚已提交业务，通过HTTP快照读取实际状态。
+
+详见[架构与一致性边界](docs/01-architecture.md)、[核心数据模型](docs/02-data-model.md)。图中未将Redis、支付或PostgreSQL画入已落地链路。
+
+## 业务闭环
+
+```mermaid
+flowchart LR
+  A[顾客登录] --> B[分区选座与上机]
+  B --> C[茶饮下单 / 本人座位报修]
+  C --> D[员工履约 / 接单维修与换机]
+  D --> E[申请下机结算]
+  E --> F{余额足够?}
+  F -->|是| G[扣款与流水提交]
+  F -->|否| H[固定账单并暂停计费]
+  H --> I[前台补款后重试]
+  I --> G
+  G --> J[释放会话并创建保洁]
+  J --> K[保洁确认后恢复空闲]
+```
+
+按分钟计费，不足一分钟按一分钟；换机保留会话费率。欠费待结算不允许恢复计费、新点单或换机继续使用。真实电脑锁屏、断网不在此仿真范围内。
+
+## 快速运行
+
+需要 **Node.js 22+、npm、Git**。首次安装需要联网，SQLite驱动包含原生模块。
 
 ```powershell
 git clone https://github.com/Y7NINE/WangBa-X-.git
@@ -74,126 +95,73 @@ npm run setup:local
 npm run dev:local
 ```
 
-已安装依赖后，只需 `npm run dev:local`。Windows 也可双击根目录的 `start-local.bat`。
+已安装依赖后执行 `npm run dev:local`，Windows也可运行 `start-local.bat`。如果聊天内置浏览器白屏，请将下面地址复制到系统Chrome或Edge地址栏。
 
-| 入口 | 本地地址 | 演示账号 |
-| :--- | :--- | :--- |
-| **顾客端** | [127.0.0.1:5180](http://127.0.0.1:5180) | 手机号 `13800138001` · 验证码 `123456` |
-| **管理端** | [127.0.0.1:5173](http://127.0.0.1:5173) | `admin` / `admin123` |
-| **API 文档** | [127.0.0.1:3000/api](http://127.0.0.1:3000/api) | 受保护接口需登录令牌 |
-| **健康检查** | [127.0.0.1:3000/health](http://127.0.0.1:3000/health) | `mode: demo` 表示仿真模式 |
+| 入口 | 地址 | 本地演示身份 |
+| --- | --- | --- |
+| 顾客端 | http://127.0.0.1:5180 | 手机号 `13800138001`，验证码 `123456` |
+| 管理端 | http://127.0.0.1:5173 | `admin` / `admin123` |
+| API文档 | http://127.0.0.1:3000/api | 受保护接口需要JWT |
+| 健康检查 | http://127.0.0.1:3000/health | 正常返回 `status: ok`、`mode: demo` |
 
-首次初始化提供 **3 个区域 · 22 个座位 · 5 个演示会员**，每位会员初始余额为 300 元演示资金，并包含待清理和故障座位，方便体验员工处理流程。
+启动脚本编译后端，并按缺失记录补齐3区域、22座位和5位演示会员，初始余额300元；重复启动保留操作与余额。数据库为 `.local/demo.sqlite`，签名密钥也仅存于 `.local/`，均不提交。停止启动终端中的服务按Ctrl+C；复用的既有前端服务需在原终端停止。
 
-<details>
-<summary><strong>演示数据、重复启动与停止服务</strong></summary>
+体验路径：[五分钟演示与面试讲解](docs/demo-and-interview.md)。
 
-- 启动脚本编译后端、初始化独立的 `.local/demo.sqlite`，再启动三个服务；默认绑定本机地址，不会覆盖原有 `netcafe.db`。
-- 重复启动保留记录与余额，不自动重置；固定验证码仅在非生产演示模式生效，不发送短信。
-- 按 **Ctrl+C** 停止本次启动的服务。复用的既有前端服务需在原终端停止。
-- 当前以 **npm + package-lock.json** 为验证路径；原有 pnpm 文件保留供参考，未重新验收 pnpm 安装流程。
+## 验证记录
 
-</details>
+最近的定向验证基线如下。各项实际执行日期、范围和本次上传前复验结果见[验证报告](docs/validation-report.md)。
 
-## 功能与流程
-
-| 面向谁 | 已跑通的能力 |
-| :--- | :--- |
-| **顾客 · 找座与上机** | 实时空位、区域单价、基础预算试算、大厅示意与列表切换 |
-| **顾客 · 席间服务** | 茶饮购物车、后端定价与余额扣款、订单进度、本人座位报修与服务记录 |
-| **员工 · 现场协作** | 订单履约与取消退款、故障接单、换机迁移会话、维修及保洁确认 |
-| **门店 · 计费与记录** | 上机费率快照、暂停恢复、余额结算、重复结算保护、交易流水与管理大盘 |
-
-```mermaid
-flowchart LR
-    A[选座上机] --> B[会话计费]
-    B --> C[下机结算]
-    C --> D[保洁确认]
-    D --> E[座位恢复可用]
-    B -. 茶饮或报修 .-> F[员工受理与处理]
-
-    classDef ink fill:#f5f1e7,stroke:#9a9d8e,color:#283b32
-    classDef green fill:#e6ece2,stroke:#7d927d,color:#283b32
-    class A,B,C,F ink
-    class D,E green
-```
-
-演示计费不足 1 分钟按 1 分钟计，结算金额四舍五入到分；换机保留原会话费率。会员折扣、包夜和复杂套餐仍待完善。
-
-## 开发与验证
-
-**最近一次本地验收（2026-10-17）**：顾客端 **18 项**、管理端 **36 项**测试通过，三端构建及 **13 组 HTTP 业务检查**通过。这是本地验证记录，并非实时 CI 状态。
-
-| 层级 | 技术选型 |
-| :--- | :--- |
-| 顾客端 / 管理端 | Vue 3 · TypeScript · Vite · Pinia · Element Plus |
-| 管理端图表 | ECharts |
-| API 与实时通信 | NestJS · TypeORM · JWT · Socket.IO |
-| 本地仿真 | SQLite · 独立演示数据 · 根目录启动脚本 |
-
-<details>
-<summary><strong>测试与构建命令</strong></summary>
+| 检查 | 最近基线 | 验证范围 |
+| --- | --- | --- |
+| 后端业务接口 | 244项通过 | 真实HTTP/JWT/内存SQLite，网关替身 |
+| 实时通信 | 47项通过 | 真实HTTP与Socket客户端，内存库、随机本地端口 |
+| 管理端 | 121项通过 | 权限、组件、请求与重连竞态 |
+| 顾客端 | 47项通过 | 身份、订单确认、结算及连接等 |
+| 三端构建 | 分别通过 | NestJS构建、Vue类型检查与生产打包 |
 
 ```powershell
-# 顾客端：18 项测试
-npm test --prefix customer
-
-# 管理端：36 项测试
+npm run test:security --prefix backend -- --no-cache --silent
+npm run test:socket --prefix backend -- --no-cache --silent
 npm test --prefix frontend -- --run
-
-# 三端构建与类型检查
+npm test --prefix customer
 npm run build --prefix backend
-npm run build --prefix customer
 npm run build --prefix frontend
-
-# 保持本地仿真运行，再执行 13 组业务检查
-npm run test:local
+npm run build --prefix customer
 ```
 
-业务检查会在演示库中创建用户与交易记录，覆盖并发抢座、暂停计费、越权请求、后端定价、订单履约与退款、报修换机、重复结算及保洁恢复。至少需要 2 个空闲座位，`LOCAL_API` 仅应指向本地仿真环境；结果保存在 `.local/smoke-results.json`。
+真实Socket测试复用frontend中的客户端，需先安装backend/frontend依赖。以上后端回归使用内存库；`npm run test:local` 是另外的13组历史演示检查，会向演示库写数据，本次没有执行。测试通过不等同于浏览器完整验收或生产部署验收。当前仍有Sass旧API和构建包体提示。
 
-Sass 旧 API 与大体积包提示仍存在。原有后端 e2e 测试文件保留，本轮核心流程使用根目录 HTTP 业务检查脚本验证。
+## 项目文档
 
-</details>
-
-<details>
-<summary><strong>项目目录</strong></summary>
+| 目的 | 入口 |
+| --- | --- |
+| 快速了解已实现与未实现 | [项目能力与边界](docs/project-showcase.md) |
+| 本地演示、面试讲解与简历措辞 | [演示与面试手册](docs/demo-and-interview.md) |
+| 架构、事务与通知设计 | [架构](docs/01-architecture.md) / [数据模型](docs/02-data-model.md) |
+| 实际执行的测试与限制 | [验证报告](docs/validation-report.md) |
+| 业务细节 | [充值](docs/recharge-idempotency.md) / [订单](docs/order-idempotency.md) / [低余额结算](docs/low-balance-settlement.md) / [Socket](docs/socket-authorization.md) |
+| 历史截图与操作步骤 | [本地仿真操作手册](docs/06-local-simulation.md) / [水墨设计](docs/07-hall-ink-admin.md) |
+| 改动记录 | [CHANGELOG](CHANGELOG.md) / [详细迭代记录](docs/iteration-progress.md) |
 
 ```text
-WangBa-X-/
-├── backend/       NestJS API、演示数据初始化与业务服务
-├── customer/      Vue 顾客端、大厅选座与水墨界面
-├── frontend/      Vue 员工管理工作台
-├── scripts/       安装、启动与 HTTP 业务检查
-├── docs/          产品调研、架构、功能说明与界面实拍
-├── database/      原有数据库初始化资料
-└── .local/        本机数据库、签名密钥与检查结果（不提交）
+backend/    NestJS API、实体、事务服务与隔离回归
+customer/   Vue顾客端
+frontend/   Vue员工管理端
+scripts/    依赖安装、本地启动与历史HTTP演示检查
+docs/       架构、协议、截图、验证与演示说明
+database/   历史SQL与部署资料（未完成生产验收）
+.local/     本机密钥、数据库、日志和备份（不提交）
 ```
 
-</details>
+## 后续方向
 
-## 文档导航
-
-| 想了解什么 | 阅读入口 |
-| :--- | :--- |
-| 为什么做、优先解决什么问题 | [市场调研与产品路线](docs/04-market-product-plan.md) |
-| 系统场景与整体说明 | [系统图文说明](docs/05-illustrated-guide.md) |
-| 如何运行与体验完整流程 | [本地仿真操作手册](docs/06-local-simulation.md) |
-| 大厅选座与水墨界面的细节 | [大厅选座与水墨管理端](docs/07-hall-ink-admin.md) |
-| 最近新增和修复了什么 | [更新记录](CHANGELOG.md) |
-
-## 接下来
-
-- [ ] 商品库存、会员套餐、订单请求幂等与超时确认。
-- [ ] 员工细分权限、完整请求 DTO、审计及其他模块统计口径复核。
-- [ ] 门店布局编辑器与多人连座预约。
-- [ ] 真实支付与退款、短信、实名核验、设备监测和电脑控制。
-
-当前采用 **本机单进程 SQLite 仿真**，同一进程内的事务队列协调并发写入；生产多进程部署仍需数据库锁、唯一约束及迁移方案。现有 Docker / PostgreSQL 配置作为开发资料保留，尚未完成验收，请以本文的本地启动流程为准。
+- 补齐剩余权限、请求DTO与敏感操作审计。
+- 订单通知、顾客工单展示及换机后会话恢复，订单与保洁页重连补偿。
+- 隔离CI、可复现Docker；真实PostgreSQL迁移、数据库约束及多实例并发验收。
+- 基础验收后再实现真实布局下的多人连座锁座、到期释放与幂等确认。
+- 库存、会员套餐、真实支付短信和设备代理仍为后续方向。
 
 ---
 
-<div align="center">
-  <sub>墨色入界面，服务落到每一席。</sub><br>
-  <sub><a href="https://github.com/Y7NINE">Y7NINE</a> · <a href="https://github.com/Y7NINE/WangBa-X-/issues">问题反馈</a> · <a href="#wangba-x">回到顶部</a></sub>
-</div>
+<div align="center">墨色入界面，服务落到每一席。<br><a href="https://github.com/Y7NINE/WangBa-X-/issues">反馈问题</a> · <a href="#wangba-x">回到顶部</a></div>

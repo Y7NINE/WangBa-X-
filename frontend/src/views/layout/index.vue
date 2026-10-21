@@ -47,6 +47,8 @@
             <el-tag :type="socketStore.connected ? 'success' : 'danger'" size="small">
               {{ socketStore.connected ? '已连接' : '未连接' }}
             </el-tag>
+            <span v-if="socketStore.recovering" role="status">更新中…</span>
+            <el-button v-else-if="socketStore.recoveryError" text type="warning" :title="socketStore.recoveryError" @click="socketStore.recover">重新同步</el-button>
           </div>
 
           <el-dropdown @command="handleCommand">
@@ -81,6 +83,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useSocketStore } from '@/stores/socket'
 import { useMachineStore } from '@/stores/machine'
 import { useFaultStore } from '@/stores/fault'
+import { menuForRole, canAccessPage } from '@/access'
 
 const route = useRoute()
 const router = useRouter()
@@ -92,20 +95,7 @@ const faultStore = useFaultStore()
 const isCollapsed = ref(false)
 const demoMode = ref(false)
 
-const menuItems = [
-  { path: '/dashboard', title: '数据大盘', icon: 'DataBoard' },
-  { path: '/seats', title: '座位管理', icon: 'Grid' },
-  { path: '/faults', title: '故障管理', icon: 'Warning' },
-  { path: '/billing', title: '计费管理', icon: 'Money' },
-  { path: '/users', title: '用户管理', icon: 'User' },
-  { path: '/cleaning', title: '保洁管理', icon: 'Brush' },
-  { path: '/shifts', title: '交接班', icon: 'Switch' },
-  { path: '/bounty', title: '悬赏任务', icon: 'Trophy' },
-  { path: '/wakeup', title: '智能唤醒', icon: 'AlarmClock' },
-  { path: '/orders', title: '水吧订单', icon: 'Coffee' },
-  { path: '/reports', title: '数据报表', icon: 'DataAnalysis' },
-  { path: '/settings', title: '系统设置', icon: 'Setting' },
-]
+const menuItems = computed(() => menuForRole(authStore.user?.role))
 
 const todayLabel = new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Shanghai', year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' }).format(new Date())
 const pageDescriptions: Record<string, string> = {
@@ -114,7 +104,7 @@ const pageDescriptions: Record<string, string> = {
 
 const currentRoute = computed(() => route.path)
 const currentTitle = computed(() => {
-  const item = menuItems.find(m => m.path === route.path)
+  const item = menuItems.value.find(m => m.path === route.path)
   return item?.title || ''
 })
 
@@ -126,16 +116,17 @@ const handleCommand = async (command: string) => {
 }
 
 onMounted(async () => {
+  const mayReadFaults = canAccessPage(authStore.user?.role, '/faults')
+  if (!mayReadFaults) faultStore.tickets = []
   try { demoMode.value = (await api.get('/health')).mode === 'demo' } catch {}
   // 连接WebSocket
   socketStore.connect()
 
   // 加载初始数据
-  await Promise.all([
-    authStore.getProfile(),
+  await Promise.allSettled([
     machineStore.fetchAreas(),
     machineStore.fetchMachines(),
-    faultStore.fetchTickets(),
+    ...(mayReadFaults ? [faultStore.fetchTickets()] : []),
   ])
 })
 

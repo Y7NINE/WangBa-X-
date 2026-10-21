@@ -4,9 +4,11 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  Index,
 } from 'typeorm';
 
 @Entity('orders')
+@Index('UQ_orders_request_id', ['requestId'], { unique: true })
 export class Order {
   @PrimaryGeneratedColumn()
   id: number;
@@ -28,6 +30,18 @@ export class Order {
 
   @Column({ length: 20, default: 'pending' })
   status: string; // pending/preparing/delivering/completed/cancelled
+
+  @Column({ name: 'request_id', type: 'varchar', length: 36, nullable: true })
+  requestId: string;
+
+  @Column({ name: 'request_fingerprint', type: 'varchar', length: 64, nullable: true })
+  requestFingerprint: string;
+
+  @Column({ name: 'created_by_id', type: 'int', nullable: true })
+  createdById: number;
+
+  @Column({ name: 'created_by_type', type: 'varchar', length: 10, nullable: true })
+  createdByType: string; // customer/staff; namespaces cannot be interchanged
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

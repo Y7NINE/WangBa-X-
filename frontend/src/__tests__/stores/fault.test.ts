@@ -5,7 +5,7 @@ import { useFaultStore } from '@/stores/fault'
 // Mock faultApi
 vi.mock('@/api/fault', () => ({
   faultApi: {
-    getTickets: vi.fn().mockResolvedValue([
+    getTickets: vi.fn().mockImplementation(async () => [
       { id: 'T001', machineId: 'A-01', faultType: 'mouse', priority: 'P2', status: 'pending' },
       { id: 'T002', machineId: 'A-02', faultType: 'keyboard', priority: 'P1', status: 'accepted' },
       { id: 'T003', machineId: 'B-01', faultType: 'network', priority: 'P3', status: 'resolved' },
@@ -54,6 +54,15 @@ describe('Fault Store', () => {
     expect(sorted[0].priority).toBe('P1')
     expect(sorted[1].priority).toBe('P2')
     expect(sorted[2].priority).toBe('P3')
+  })
+
+  it('P0 必须优先于P1，未知优先级放最后且不修改原数组', async () => {
+    const store = useFaultStore()
+    await store.fetchTickets()
+    store.addTicket({ id: 'urgent', priority: 'P0', status: 'pending' } as any)
+    store.addTicket({ id: 'unknown', priority: '?', status: 'pending' } as any)
+    expect(store.sortedTickets.map(ticket => ticket.priority)).toEqual(['P0', 'P1', 'P2', 'P3', '?'])
+    expect(store.tickets[0].id).toBe('unknown')
   })
 
   it('应该添加新工单', async () => {

@@ -24,7 +24,7 @@ Object.defineProperty(window, 'localStorage', {
 // Mock window.location
 Object.defineProperty(window, 'location', {
   value: {
-    href: '/',
+    href: 'http://localhost/',
     assign: vi.fn(),
     replace: vi.fn(),
     reload: vi.fn(),

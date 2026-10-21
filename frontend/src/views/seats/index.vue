@@ -301,48 +301,49 @@
         <div class="machine-actions">
           <el-button-group>
             <el-button
-              v-if="selectedMachine.status === 'offline'"
+              v-if="selectedMachine.status === 'offline' && canAccessPage(authStore.user?.role, '/billing')"
               type="success"
               @click="$router.push('/billing')"
             >
               查看计费
             </el-button>
             <el-button
-              v-if="selectedMachine.status === 'online'"
+              v-if="selectedMachine.status === 'online' && canAccessPage(authStore.user?.role, '/billing')"
               type="warning"
               @click="$router.push('/billing')"
             >
               下机结算
             </el-button>
             <el-button
-              v-if="selectedMachine.status === 'fault'"
+              v-if="selectedMachine.status === 'fault' && canAccessPage(authStore.user?.role, '/faults')"
               type="primary"
               @click="$router.push('/faults')"
             >
               处理工单
             </el-button>
             <el-button
-              v-if="selectedMachine.status === 'repairing'"
+              v-if="selectedMachine.status === 'repairing' && canAccessPage(authStore.user?.role, '/faults')"
               type="success"
               @click="$router.push('/faults')"
             >
               查看工单
             </el-button>
             <el-button
-              v-if="selectedMachine.status === 'dirty'"
+              v-if="selectedMachine.status === 'dirty' && canAccessPage(authStore.user?.role, '/cleaning')"
               type="primary"
               @click="$router.push('/cleaning')"
             >
               前往保洁
             </el-button>
             <el-button
-              v-if="selectedMachine.status === 'cleaning'"
+              v-if="selectedMachine.status === 'cleaning' && canAccessPage(authStore.user?.role, '/cleaning')"
               type="success"
               @click="$router.push('/cleaning')"
             >
               确认保洁
             </el-button>
             <el-button
+              v-if="canAccessPage(authStore.user?.role, '/faults')"
               type="danger"
               @click="handleReportFault"
             >
@@ -397,8 +398,11 @@ import { Loading, Brush, Monitor, Grid, Menu, Coffee, Male } from '@element-plus
 import { useMachineStore } from '@/stores/machine'
 import { type Machine } from '@/api/machine'
 import { faultApi } from '@/api/fault'
+import { useAuthStore } from '@/stores/auth'
+import { canAccessPage } from '@/access'
 
 const machineStore = useMachineStore()
+const authStore = useAuthStore()
 
 const selectedArea = ref(0)
 const viewMode = ref('floor')

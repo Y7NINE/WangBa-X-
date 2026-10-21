@@ -1,5 +1,8 @@
 ﻿import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router'
 
+import { useAuthStore } from '@/stores/auth'
+import { createAccessGuard } from './access-guard'
+
 const routes: RouteRecordRaw[] = [
   {
     path: '/login',
@@ -94,14 +97,6 @@ const router = createRouter({
   routes,
 })
 
-// 路由守卫
-router.beforeEach((to, _from, next) => {
-  const token = localStorage.getItem('token')
-  if (to.path !== '/login' && !token) {
-    next('/login')
-  } else {
-    next()
-  }
-})
+router.beforeEach(to => createAccessGuard(useAuthStore())(to))
 
 export default router

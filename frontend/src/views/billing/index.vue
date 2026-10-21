@@ -24,15 +24,15 @@
             <el-table-column prop="status" label="状态" width="80">
               <template #default="{ row }">
                 <el-tag :type="row.status === 'active' ? 'success' : 'info'">
-                  {{ row.status === 'active' ? '进行中' : '已暂停' }}
+                  {{ row.settlementRequestedAt ? '待结算（已停计费）' : row.status === 'active' ? '进行中' : '已暂停' }}
                 </el-tag>
               </template>
             </el-table-column>
             <el-table-column label="操作" width="150">
               <template #default="{ row }">
                 <el-button-group>
-                  <el-button size="small" @click="handlePause(row as Session)">{{ row.status === 'paused' ? '恢复' : '暂停' }}</el-button>
-                  <el-button size="small" type="danger" @click="handleEnd(row as Session)">结束</el-button>
+                  <el-button v-if="!row.settlementRequestedAt" size="small" @click="handlePause(row as Session)">{{ row.status === 'paused' ? '恢复' : '暂停' }}</el-button>
+                  <el-button size="small" type="danger" @click="handleEnd(row as Session)">{{ row.settlementRequestedAt ? '重试结算' : '结束' }}</el-button>
                 </el-button-group>
               </template>
             </el-table-column>
@@ -71,7 +71,8 @@
 
     <!-- 充值弹窗 -->
     <el-dialog v-model="rechargeVisible" title="用户充值" width="400px">
-      <el-form :model="rechargeForm" label-width="80px">
+      <el-alert v-if="pending || storageError" :title="storageError || '原充值结果待确认，请勿重复收款；点击下方按钮确认或安全重试。'" type="warning" :closable="false" />
+      <el-form :model="rechargeForm" label-width="80px" :disabled="!!pending || recharging">
         <el-form-item label="用户ID">
           <el-input v-model="rechargeForm.userId" placeholder="请输入用户ID" />
         </el-form-item>
@@ -88,7 +89,7 @@
       </el-form>
       <template #footer>
         <el-button @click="rechargeVisible = false">取消</el-button>
-        <el-button type="primary" @click="submitRecharge">确认充值</el-button>
+        <el-button type="primary" :loading="recharging" :disabled="!!storageError" @click="submitRecharge">{{ pending ? '确认结果 / 重试原充值' : '确认充值' }}</el-button>
       </template>
     </el-dialog>
   </div>
@@ -99,6 +100,9 @@ import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { billingApi, Session, Transaction } from '@/api/billing'
 import dayjs from 'dayjs'
+import { useRecharge } from '@/composables/useRecharge'
+
+const { pending, busy: recharging, storageError, restore, submit } = useRecharge()
 
 const activeTab = ref('sessions')
 const activeSessions = ref<Session[]>([])
@@ -121,27 +125,28 @@ const loadData = async () => {
 }
 
 const handleRecharge = () => {
-  rechargeForm.value = { userId: '', amount: 50, paymentMethod: 'cash' }
+  restore()
+  rechargeForm.value = pending.value
+    ? { ...pending.value, userId: String(pending.value.userId) }
+    : { userId: '', amount: 50, paymentMethod: 'cash' }
   rechargeVisible.value = true
 }
 
 const submitRecharge = async () => {
+  if (recharging.value) return
   if (!rechargeForm.value.userId) {
     ElMessage.warning('请输入用户ID')
     return
   }
 
   try {
-    await billingApi.recharge(
-      parseInt(rechargeForm.value.userId),
-      rechargeForm.value.amount,
-      rechargeForm.value.paymentMethod
-    )
+    await submit({ userId: Number(rechargeForm.value.userId), amount: rechargeForm.value.amount,
+      paymentMethod: rechargeForm.value.paymentMethod })
     ElMessage.success('充值成功')
     rechargeVisible.value = false
-    loadData()
-  } catch (error) {
-    ElMessage.error('充值失败')
+    void loadData().catch(() => ElMessage.warning('充值已确认，列表刷新失败，请稍后刷新'))
+  } catch (error: any) {
+    ElMessage.error(error.message || '充值结果尚未确认，请勿重复收款')
   }
 }
 
@@ -157,13 +162,15 @@ const handlePause = async (session: Session) => {
 }
 
 const handleEnd = async (session: Session) => {
+  try { await ElMessageBox.confirm('确认停止使用并结算？余额不足时将固定账单并停计费，补款后需重试结算，期间座位仍保留占用。', '确认', { type: 'warning' }) }
+  catch { return }
   try {
-    await ElMessageBox.confirm('确认结束该会话？', '确认', { type: 'warning' })
     await billingApi.endSession(session.id)
     ElMessage.success('会话已结束')
-    loadData()
-  } catch (error) {
-    // 取消操作
+    void loadData().catch(() => ElMessage.warning('结算已确认，列表刷新失败，请稍后刷新'))
+  } catch (error: any) {
+    ElMessage.error(error.response?.data?.message || error.message || '结算结果待确认，请刷新会话后重试')
+    await loadData().catch(() => undefined)
   }
 }
 

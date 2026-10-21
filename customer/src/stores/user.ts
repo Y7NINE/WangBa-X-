@@ -13,6 +13,7 @@ interface User {
 }
 
 export interface Session {
+  settlementRequestedAt?: string | null
   userId: number
   id: number
   machineId: string
@@ -73,9 +74,12 @@ export const useUserStore = defineStore('user', () => {
 
   async function endCurrentSession() {
     if (!currentSession.value) return null
-    const r = await api.patch(`/billing/sessions/${currentSession.value.id}/end`)
+    let r
+    try { r = await api.patch(`/billing/sessions/${currentSession.value.id}/end`) }
+    catch (error) { await loadCurrentSession(); throw error }
     currentSession.value = null
-    await refreshProfile()
+    // Settlement is already confirmed; a profile refresh failure must not report it as failed.
+    try { await refreshProfile() } catch {}
     return r
   }
 

@@ -17,14 +17,23 @@ export interface Order {
   status: string
   createdAt: string
   updatedAt: string
+  requestId?: string
+  createdById?: number
+  createdByType?: string
+}
+
+export interface OrderCommand {
+  requestId: string
+  items: { itemId: number; qty: number }[]
+  remark?: string
 }
 
 export const orderApi = {
-  createOrder(data: { userId?: number; machineId?: string; items: OrderItem[]; total: number; remark?: string }) {
-    return api.post<Order>('/orders', {
-      ...data,
-      items: JSON.stringify(data.items),
-    })
+  createOrder(data: OrderCommand) {
+    return api.post<Order>('/orders', data)
+  },
+  getRequestResult(requestId: string) {
+    return api.get<Order>(`/orders/requests/${requestId}`)
   },
   getOrders(status?: string) {
     return api.get<Order[]>('/orders', { params: status ? { status } : {} })

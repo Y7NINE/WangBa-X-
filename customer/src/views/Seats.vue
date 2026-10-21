@@ -79,13 +79,14 @@
 
 <script setup lang="ts">
 import SeatHall from '@/components/SeatHall.vue'
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 import { machineApi, Machine, Area } from '@/api/machine'
 import { billingApi } from '@/api/billing'
-import { io, Socket } from 'socket.io-client'
+import { type Socket } from 'socket.io-client'
+import { connectCustomerSocket } from '@/utils/realtime'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -172,13 +173,13 @@ const loadData = async () => {
 }
 
 const connectSocket = () => {
-  socket = io({ path: '/socket.io' })
-  socket.on('connect', loadData)
-  socket.on('machine_status_update', (data) => {
+  socket?.disconnect()
+  socket = connectCustomerSocket(loadData, (data) => {
     const m = machines.value.find(m => m.id === data.machine_id)
     if (m) m.status = data.status
-  })
+  }, () => userStore.token)
 }
+watch(() => userStore.token, connectSocket, { flush: 'sync' })
 
 onMounted(() => {
   loadData()

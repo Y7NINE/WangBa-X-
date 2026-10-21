@@ -7,6 +7,7 @@ export interface CleaningTask {
   cleanerId?: number | null
   startedAt?: string | null
   completedAt?: string | null
+  completedBy?: number | null
   duration?: number | null
   createdAt?: string | null
 }

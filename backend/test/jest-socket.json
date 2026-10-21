@@ -1,0 +1,10 @@
+{
+  "moduleFileExtensions": ["js", "json", "ts"],
+  "rootDir": "..",
+  "roots": ["<rootDir>/test"],
+  "watchman": false,
+  "testEnvironment": "node",
+  "modulePathIgnorePatterns": ["<rootDir>/node_modules.incomplete/", "<rootDir>/dist/"],
+  "testMatch": ["<rootDir>/test/socket-authorization.e2e-spec.ts"],
+  "transform": { "^.+\\.ts$": ["ts-jest", { "tsconfig": { "rootDir": ".", "incremental": false } }] }
+}

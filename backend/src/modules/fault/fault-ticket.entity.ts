@@ -53,6 +53,9 @@ export class FaultTicket {
   @Column({ type: 'datetime', name: 'resolved_at', nullable: true })
   resolvedAt: Date;
 
+  @Column({ name: 'resolved_by', nullable: true })
+  resolvedBy: number;
+
   @Column({ length: 50, nullable: true })
   resolution: string;
 
@@ -64,6 +67,9 @@ export class FaultTicket {
 
   @Column({ type: 'datetime', name: 'transferred_at', nullable: true })
   transferredAt: Date;
+
+  @Column({ name: 'transferred_by', nullable: true })
+  transferredBy: number;
 
   @Column({ type: 'datetime', name: 'timeout_at', nullable: true })
   timeoutAt: Date;

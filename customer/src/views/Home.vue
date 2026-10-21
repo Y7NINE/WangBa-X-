@@ -22,9 +22,9 @@
     <div class="store-status" role="status"><span class="status-label"><i :class="{ unavailable: loadError }"></i>{{ loading ? '正在更新座位' : loadError ? '门店数据暂不可用' : '门店座位' }}</span><span v-if="!loadError && !loading">空闲 <strong>{{ availableCount }}</strong> 席 <span class="status-divider">/</span> 上机 {{ onlineCount }} 人</span><button v-else-if="loadError" class="text-button" @click="loadData">重试</button></div>
 
     <section v-if="userStore.currentSession" class="session panel">
-      <header class="section-heading"><div><span class="section-kicker">正在上机</span><h2>你的这一局</h2></div><span class="session-seat">{{ userStore.currentSession.machineId }}</span></header>
+      <header class="section-heading"><div><span class="section-kicker">{{ userStore.currentSession.settlementRequestedAt ? '待结算（已停计费）' : userStore.currentSession.status === 'paused' ? '已暂停' : '正在上机' }}</span><h2>你的这一局</h2></div><span class="session-seat">{{ userStore.currentSession.machineId }}</span></header>
       <div class="metrics"><div><small>已用时长</small><strong>{{ formatDuration(userStore.currentSession.duration) }}</strong></div><div><small>当前费用</small><strong>¥{{ Number(userStore.currentSession.amount || 0).toFixed(2) }}</strong></div></div>
-      <div class="session-actions"><button @click="router.push('/repair')">设备报修</button><button class="primary" @click="handleEndSession">下机结算</button></div>
+      <div class="session-actions"><button @click="router.push('/repair')">设备报修</button><button class="primary" @click="handleEndSession">{{ userStore.currentSession.settlementRequestedAt ? '补款后重试结算' : '下机结算' }}</button></div>
     </section>
 
     <nav class="services" aria-label="门店服务">
@@ -48,12 +48,13 @@
   </main>
 </template>
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 import { machineApi, type Machine, type Area } from '@/api/machine'
-import { io, type Socket } from 'socket.io-client'
+import { type Socket } from 'socket.io-client'
+import { connectCustomerSocket } from '@/utils/realtime'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -79,7 +80,7 @@ const formatDuration = (min: number) => {
 const handleEndSession = async () => {
   if (!userStore.currentSession) return
   try {
-    await ElMessageBox.confirm('确定下机？', '确认')
+    await ElMessageBox.confirm('确定停止使用并结算？余额不足时账单固定并停止计费，请到前台补款后重试结算，期间座位仍保留占用。', '确认')
     const r = await userStore.endCurrentSession()
     ElMessage.success(`结算 ¥${r?.amount ?? 0}`)
     loadData()
@@ -101,13 +102,13 @@ const loadData = async () => {
 }
 
 const connectSocket = () => {
-  socket = io({ path: '/socket.io' })
-  socket.on('connect', loadData)
-  socket.on('machine_status_update', (d) => {
+  socket?.disconnect()
+  socket = connectCustomerSocket(loadData, (d) => {
     const m = machines.value.find(m => m.id === d.machine_id)
     if (m) m.status = d.status
-  })
+  }, () => userStore.token)
 }
+watch(() => userStore.token, connectSocket, { flush: 'sync' })
 
 let sessionTimer: number | null = null
 

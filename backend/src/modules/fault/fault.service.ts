@@ -9,12 +9,13 @@ import { Machine } from '../machine/machine.entity';
 import { CleaningTask } from '../cleaning/cleaning-task.entity';
 import { localTransaction } from '../../common/local-transaction';
 import { EventsGateway } from '../../common/gateway/events.gateway';
+import { StaffActor } from '../auth/roles.decorator';
 
 @Injectable()
 export class FaultService {
   constructor(@InjectRepository(FaultTicket) private tickets: Repository<FaultTicket>, @InjectRepository(FaultType) private types: Repository<FaultType>, private source: DataSource, private events: EventsGateway) {}
   findAll(status?: string, priority?: string, reporterId?: number) {
-    return this.tickets.find({ where: { ...(status ? { status } : {}), ...(priority ? { priority } : {}), ...(reporterId ? { reporterId, reporterType: 'player' } : {}) }, order: { createdAt: 'DESC' }, take: 100 });
+    return this.tickets.find({ where: { ...(status ? { status } : {}), ...(priority ? { priority } : {}), ...(reporterId !== undefined ? { reporterId, reporterType: 'player' } : {}) }, order: { createdAt: 'DESC' }, take: 100 });
   }
   async findOne(id: string) {
     const ticket = await this.tickets.findOneBy({ id });
@@ -42,22 +43,34 @@ export class FaultService {
       await manager.update(Machine, machine.id, { status: 'fault', faultType: type.id, faultTime: new Date() });
       return ticket;
     });
-    this.events.broadcastMachineUpdate(saved.machineId, 'fault');
+    await this.events.broadcastMachineUpdate(saved.machineId, 'fault');
+    await this.events.broadcastTicketCreated(saved.id);
     return saved;
   }
   async accept(id: string, handlerId: number) {
-    return localTransaction(this.source, async manager => {
+    const saved = await localTransaction(this.source, async manager => {
       const ticket = await manager.findOneBy(FaultTicket, { id });
       if (!ticket || ticket.status !== 'pending') throw new BadRequestException('工单状态不允许接单');
       Object.assign(ticket, { status: 'accepted', handlerId, acceptedAt: new Date() });
       return manager.save(FaultTicket, ticket);
     });
+    await this.events.broadcastTicketUpdate(saved.id, {
+      status: saved.status, handlerId: saved.handlerId, acceptedAt: saved.acceptedAt, updatedAt: saved.updatedAt,
+    });
+    return saved;
   }
-  async resolve(id: string, data: { resolution: string; note?: string }) {
+  private assertOperator(ticket: FaultTicket, actor: StaffActor, allowCashier = false) {
+    const canOverride = ['admin', 'manager'].includes(actor.role) || (allowCashier && actor.role === 'cashier');
+    if (!Number.isSafeInteger(actor.id) || actor.id < 1 || (!canOverride && (actor.role !== 'technician' || ticket.handlerId !== actor.id))) {
+      throw new ForbiddenException('只能处理本人已接工单，请联系店长或经理协调');
+    }
+  }
+  async resolve(id: string, data: { resolution: string; note?: string }, actor: StaffActor) {
     const result = await localTransaction(this.source, async manager => {
       const ticket = await manager.findOneBy(FaultTicket, { id });
       if (!ticket || !['accepted', 'processing'].includes(ticket.status)) throw new BadRequestException('请先接单再完成维修');
-      Object.assign(ticket, { status: 'resolved', resolution: String(data.resolution || '已修复').slice(0, 50), resolutionNote: data.note || '', resolvedAt: new Date() });
+      this.assertOperator(ticket, actor);
+      Object.assign(ticket, { status: 'resolved', resolution: String(data.resolution || '已修复').slice(0, 50), resolutionNote: data.note || '', resolvedAt: new Date(), resolvedBy: actor.id });
       await manager.save(FaultTicket, ticket);
       const other = (await manager.find(FaultTicket, { where: { machineId: ticket.machineId } })).some(row => ['pending', 'accepted', 'processing', 'escalated'].includes(row.status));
       const session = await manager.findOne(Session, { where: [{ machineId: ticket.machineId, status: 'active' }, { machineId: ticket.machineId, status: 'paused' }] });
@@ -69,26 +82,36 @@ export class FaultService {
       }
       return { ticket, status };
     });
-    this.events.broadcastMachineUpdate(result.ticket.machineId, result.status);
+    await this.events.broadcastMachineUpdate(result.ticket.machineId, result.status);
+    await this.events.broadcastTicketUpdate(result.ticket.id, {
+      status: result.ticket.status, resolution: result.ticket.resolution, resolutionNote: result.ticket.resolutionNote,
+      resolvedAt: result.ticket.resolvedAt, resolvedBy: result.ticket.resolvedBy, updatedAt: result.ticket.updatedAt,
+    });
     return result.ticket;
   }
-  async transfer(id: string, newMachineId: string) {
+  async transfer(id: string, newMachineId: string, actor: StaffActor) {
     const result = await localTransaction(this.source, async manager => {
       const ticket = await manager.findOneBy(FaultTicket, { id });
       if (!ticket || !['accepted', 'processing'].includes(ticket.status)) throw new BadRequestException('工单状态不允许换机');
+      this.assertOperator(ticket, actor, true);
       const machine = await manager.findOneBy(Machine, { id: newMachineId });
       if (!machine || machine.status !== 'offline') throw new BadRequestException('目标座位不可用');
       const session = await manager.findOne(Session, { where: [{ machineId: ticket.machineId, status: 'active' }, { machineId: ticket.machineId, status: 'paused' }] });
       if (!session) throw new BadRequestException('原座位没有可转移的上机会话');
+      if (session.settlementRequestedAt) throw new BadRequestException('当前会话待结算，不能换机继续使用');
       await manager.update(Session, session.id, { machineId: newMachineId });
       await manager.update(Machine, newMachineId, { status: 'online', currentUserId: session.userId, sessionId: session.id });
       await manager.update(Machine, ticket.machineId, { status: 'fault', currentUserId: null as any, sessionId: null as any });
-      Object.assign(ticket, { newMachineId, transferredAt: new Date(), playerAction: 'transferred' });
+      Object.assign(ticket, { newMachineId, transferredAt: new Date(), transferredBy: actor.id, playerAction: 'transferred' });
       // Repair ticket stays accepted: the original machine still needs repair.
       return manager.save(FaultTicket, ticket);
     });
-    this.events.broadcastMachineUpdate(result.machineId, 'fault');
-    this.events.broadcastMachineUpdate(newMachineId, 'online');
+    await this.events.broadcastMachineUpdate(result.machineId, 'fault');
+    await this.events.broadcastMachineUpdate(newMachineId, 'online');
+    await this.events.broadcastTicketUpdate(result.id, {
+      status: result.status, newMachineId: result.newMachineId, playerAction: result.playerAction,
+      transferredAt: result.transferredAt, transferredBy: result.transferredBy, updatedAt: result.updatedAt,
+    });
     return result;
   }
   getFaultTypes() { return this.types.find({ where: { isActive: true } }); }

@@ -136,7 +136,7 @@
           <template #default="{ row }">
             <el-button-group>
               <el-button
-                v-if="row.status === 'pending'"
+                v-if="canAcceptFault(authStore.user, row as FaultTicket)"
                 type="success"
                 size="small"
                 @click="handleAccept(row as FaultTicket)"
@@ -144,7 +144,7 @@
                 接单
               </el-button>
               <el-button
-                v-if = "['accepted', 'processing'].includes(row.status)"
+                v-if="canResolveFault(authStore.user, row as FaultTicket)"
                 type="primary"
                 size="small"
                 @click="handleResolve(row as FaultTicket)"
@@ -152,7 +152,7 @@
                 完成
               </el-button>
               <el-button
-                v-if = "['accepted', 'processing'].includes(row.status)"
+                v-if="canTransferFault(authStore.user, row as FaultTicket)"
                 type="warning"
                 size="small"
                 @click="handleTransfer(row as FaultTicket)"
@@ -198,7 +198,7 @@
           <el-descriptions-item label="超时时间">{{ currentTicket.timeoutAt ? formatTime(currentTicket.timeoutAt) : '-' }}</el-descriptions-item>
         </el-descriptions>
 
-        <div v-if="currentTicket.status === 'pending'" class="ticket-actions">
+        <div v-if="canAcceptFault(authStore.user, currentTicket)" class="ticket-actions">
           <el-button type="success" @click="handleAccept(currentTicket)">接单处理</el-button>
         </div>
       </div>
@@ -283,11 +283,14 @@ import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useFaultStore } from '@/stores/fault'
 import { useMachineStore } from '@/stores/machine'
+import { useAuthStore } from '@/stores/auth'
+import { canAcceptFault, canResolveFault, canTransferFault } from '@/access'
 import { faultApi, FaultTicket } from '@/api/fault'
 import dayjs from 'dayjs'
 
 const faultStore = useFaultStore()
 const machineStore = useMachineStore()
+const authStore = useAuthStore()
 
 const filters = ref({
   status: '',
@@ -433,11 +436,8 @@ const handleAccept = async (ticket: FaultTicket) => {
       type: 'warning',
     })
 
-    await faultApi.acceptTicket(ticket.id)
-    faultStore.updateTicket(ticket.id, {
-      status: 'accepted',
-      handlerId: 1, // 当前用户ID
-    })
+    const updated = await faultApi.acceptTicket(ticket.id)
+    faultStore.updateTicket(ticket.id, updated)
 
     ElMessage.success('已接单')
     detailVisible.value = false
@@ -459,11 +459,9 @@ const submitResolve = async () => {
   }
 
   try {
-    await faultApi.resolveTicket(currentTicket.value.id, resolveForm.value)
-    faultStore.updateTicket(currentTicket.value.id, { status: 'resolved' })
-
-    // 更新机器状态
-    machineStore.updateMachineStatus(currentTicket.value.machineId, 'offline')
+    const updated = await faultApi.resolveTicket(currentTicket.value.id, resolveForm.value)
+    faultStore.updateTicket(currentTicket.value.id, updated)
+    await machineStore.fetchMachines()
 
     resolveVisible.value = false
     ElMessage.success('工单已完成')

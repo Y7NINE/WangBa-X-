@@ -1,5 +1,8 @@
 # 数据模型
 
+> 文档状态（2026-10-21）：下文保留早期模型、流程或截图记录，测试数字与待办可能已变化。当前实现、验证与部署边界以[项目能力](project-showcase.md)、[架构](01-architecture.md)和[验证报告](validation-report.md)为准。
+
+
 以 TypeORM entities 为唯一真源。下图覆盖核心业务表。
 
 ## ER 图

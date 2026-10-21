@@ -31,7 +31,6 @@ export class BountyService {
   async getUserProgress(userId: number): Promise<UserTaskProgress[]> {
     return this.progressRepository.find({
       where: { userId },
-      relations: ['task'],
     });
   }
 
@@ -44,9 +43,12 @@ export class BountyService {
       throw new NotFoundException('任务未完成或已领取');
     }
 
-    progress.status = 'claimed';
-    progress.claimedAt = new Date();
-
-    return this.progressRepository.save(progress);
+    // Conditional transition prevents two callers from claiming the same progress row.
+    const result = await this.progressRepository.update(
+      { id: progress.id, userId, status: 'completed' },
+      { status: 'claimed', claimedAt: new Date() },
+    );
+    if (result.affected !== 1) throw new NotFoundException('任务未完成或已领取');
+    return this.progressRepository.findOneByOrFail({ id: progress.id, userId });
   }
 }

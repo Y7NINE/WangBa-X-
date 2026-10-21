@@ -120,4 +120,32 @@ describe('user store', () => {
     expect(store.user?.id).toBe(mockUser.id)
   })
 
+  it('欠费结算失败后重新读取已停计费的固定账单', async () => {
+    const store = useUserStore()
+    await store.loginByPhone('13800001111', '123456')
+    const pending = { ...mockSession, status: 'paused', amount: 5, settlementRequestedAt: '2026-10-21T01:05:00.000Z' }
+    const failure = Object.assign(new Error('已停止计费，请补款'), { status: 409 })
+    apiMock.patch.mockRejectedValueOnce(failure)
+    apiMock.get.mockResolvedValueOnce([pending])
+    await expect(store.endCurrentSession()).rejects.toBe(failure)
+    expect(store.currentSession).toEqual(pending)
+  })
+
+  it('结算请求和状态查询均遇到网络问题时保留已知会话', async () => {
+    const store = useUserStore()
+    await store.loginByPhone('13800001111', '123456')
+    apiMock.patch.mockRejectedValueOnce(new Error('network'))
+    apiMock.get.mockRejectedValueOnce(new Error('network'))
+    await expect(store.endCurrentSession()).rejects.toThrow('network')
+    expect(store.currentSession?.id).toBe(mockSession.id)
+  })
+
+  it('结算已成功时资料刷新失败不冒充结算失败', async () => {
+    const store = useUserStore()
+    await store.loginByPhone('13800001111', '123456')
+    apiMock.get.mockRejectedValueOnce(new Error('profile offline'))
+    expect(await store.endCurrentSession()).toMatchObject({ id: 9, status: 'completed' })
+    expect(store.currentSession).toBeNull()
+  })
+
 })

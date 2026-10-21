@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
 import { AppModule } from '../src/app.module';
+import { randomUUID } from 'crypto';
 
 describe('BillingController (e2e)', () => {
   let app: INestApplication;
@@ -43,6 +44,7 @@ describe('BillingController (e2e)', () => {
         .post('/billing/recharge')
         .set('Authorization', `Bearer ${token}`)
         .send({
+          requestId: randomUUID(),
           userId: 1,
           amount: 100,
           paymentMethod: 'cash',

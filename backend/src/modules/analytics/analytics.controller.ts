@@ -3,10 +3,12 @@ import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger'
 import { AnalyticsService } from './analytics.service';
 import { StaffGuard } from '../auth/staff.guard';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Roles } from '../auth/roles.decorator';
 
 @ApiTags('数据统计')
 @Controller('analytics')
 @UseGuards(JwtAuthGuard, StaffGuard)
+@Roles('admin', 'manager', 'cashier')
 @ApiBearerAuth()
 export class AnalyticsController {
   constructor(private analyticsService: AnalyticsService) {}

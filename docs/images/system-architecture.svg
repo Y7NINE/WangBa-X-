@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="600" viewBox="0 0 1200 600" role="img" aria-labelledby="title desc">
+  <title id="title">WangBa-X 已验证的本地系统架构</title>
+  <desc id="desc">Vue顾客端和员工端通过REST与授权Socket访问NestJS服务，事务写入SQLite；测试使用隔离内存数据库。PostgreSQL、Redis与支付尚未验收或接入。</desc>
+  <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto-start-reverse"><path d="M0 1L8 5L0 9" fill="none" stroke="#526650" stroke-width="1.5"/></marker></defs>
+  <rect width="1200" height="600" rx="16" fill="#f5f1e7"/>
+  <g font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" fill="#283b32">
+    <text x="48" y="57" font-size="15" letter-spacing="4">WANGBA-X / SYSTEM</text>
+    <text x="48" y="108" font-size="30">双端协作，状态与账目落到同一笔事务</text>
+    <text x="48" y="140" font-size="15" fill="#697266">当前验证路径 · 本机单进程 · SQLite · 2026-10-21</text>
+    <g stroke="#c8cabc" stroke-width="1.5" fill="#fffcf4">
+      <rect x="48" y="190" width="250" height="125" rx="10"/><rect x="48" y="345" width="250" height="125" rx="10"/>
+      <rect x="426" y="190" width="350" height="280" rx="10"/><rect x="902" y="190" width="250" height="125" rx="10"/>
+      <rect x="902" y="345" width="250" height="125" rx="10"/>
+    </g>
+    <g font-size="23"><text x="72" y="230">顾客自助端</text><text x="72" y="385">员工工作台</text><text x="450" y="232">NestJS 业务服务</text><text x="926" y="230">SQLite 演示库</text><text x="926" y="385">隔离回归验证</text></g>
+    <g font-size="15" fill="#697266">
+      <text x="72" y="260">Vue 3 / TypeScript / Pinia</text><text x="72" y="286">选座 · 点单 · 报修 · 结算</text>
+      <text x="72" y="415">岗位菜单 / 操作归属</text><text x="72" y="441">快照恢复 / 在途事件合并</text>
+      <text x="450" y="268">REST · JWT · DTO · 字段白名单</text><text x="450" y="308">业务校验 → 事务写入 → 提交</text><text x="450" y="348">请求幂等 / 超时结果查询</text><text x="450" y="388">Socket 鉴权 / 本人授权房间</text><text x="450" y="428">提交后通知 / HTTP 快照恢复</text>
+      <text x="926" y="260">同进程事务队列</text><text x="926" y="286">余额 · 流水 · 会话 · 工单</text><text x="926" y="415">内存库 / 随机本地端口</text><text x="926" y="441">真实 HTTP + Socket 客户端</text>
+    </g>
+    <g stroke="#526650" stroke-width="2" fill="none" marker-end="url(#arrow)"><path d="M298 252H414"/><path d="M298 407H414"/><path d="M776 252H890"/><path d="M902 407H788"/></g>
+    <g font-size="12" fill="#526650"><text x="319" y="235">HTTP / JWT</text><text x="316" y="390">Socket.IO</text><text x="800" y="235">事务提交</text></g>
+    <path d="M48 514H1152" stroke="#c8cabc"/>
+    <text x="48" y="550" font-size="15" fill="#8f4f43">尚未验收：PostgreSQL / 多实例 / Docker；尚未接入：真实支付、短信与电脑硬件控制</text>
+  </g>
+</svg>

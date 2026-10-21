@@ -25,26 +25,28 @@ describe('orderApi', () => {
     apiMock.patch.mockReset()
   })
 
-  it('createOrder serializes items and posts /orders', async () => {
+  it('createOrder sends fixed request ID and product quantities without client pricing', async () => {
     apiMock.post.mockResolvedValue({ id: 1, status: 'pending', total: 24 })
     const items = [
-      { itemId: 1, name: '冰美式', price: 18, qty: 1 },
-      { itemId: 5, name: '可乐', price: 6, qty: 1 },
+      { itemId: 1, qty: 1 },
+      { itemId: 5, qty: 1 },
     ]
     const r = await orderApi.createOrder({
-      userId: 1,
-      machineId: 'A-01',
+      requestId: 'a03f9fd2-24e9-4ba7-883c-a3760f9c8b15',
       items,
-      total: 24,
     })
 
     expect(apiMock.post).toHaveBeenCalledWith('/orders', {
-      userId: 1,
-      machineId: 'A-01',
-      items: JSON.stringify(items),
-      total: 24,
+      requestId: 'a03f9fd2-24e9-4ba7-883c-a3760f9c8b15',
+      items,
     })
     expect(r.id).toBe(1)
+  })
+
+  it('confirms a previous request by its fixed ID', async () => {
+    apiMock.get.mockResolvedValue({ id: 1 })
+    await orderApi.getRequestResult('request-id')
+    expect(apiMock.get).toHaveBeenCalledWith('/orders/requests/request-id')
   })
 
   it('getOrders supports status filter', async () => {

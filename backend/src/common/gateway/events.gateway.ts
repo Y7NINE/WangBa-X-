@@ -1,75 +1,105 @@
-import {
-  WebSocketGateway,
-  WebSocketServer,
-  SubscribeMessage,
-  OnGatewayConnection,
-  OnGatewayDisconnect,
-  MessageBody,
-  ConnectedSocket,
-} from '@nestjs/websockets';
+import { WebSocketGateway, WebSocketServer, SubscribeMessage, OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect, MessageBody, ConnectedSocket } from '@nestjs/websockets';
+import { OnApplicationShutdown } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
-import { Logger } from '@nestjs/common';
+import { DataSource } from 'typeorm';
+import { SocketActor, SocketPolicy, SocketTopic } from './socket-policy';
+import { FaultTicket } from '../../modules/fault/fault-ticket.entity';
 
-@WebSocketGateway({
-  cors: {
-    origin: ['http://localhost:5173', 'http://localhost:5180', 'http://127.0.0.1:5173', 'http://127.0.0.1:5180'],
-    credentials: true,
-  },
-})
-export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
-  @WebSocketServer()
-  server: Server;
+@WebSocketGateway({ cors: {
+  origin: ['http://localhost:5173', 'http://localhost:5180', 'http://127.0.0.1:5173', 'http://127.0.0.1:5180'], credentials: true,
+} })
+export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect, OnApplicationShutdown {
+  @WebSocketServer() server: Server;
+  private expiry = new Map<string, ReturnType<typeof setTimeout>>();
+  constructor(private policy: SocketPolicy, private source: DataSource) {}
 
-  private logger = new Logger('EventsGateway');
-
+  afterInit(server: Server) {
+    server.use(async (client, next) => {
+      try {
+        client.data.actor = await this.policy.authenticate(client.handshake.auth?.token);
+        await client.join('machines');
+        next();
+      } catch { next(new Error('UNAUTHORIZED')); }
+    });
+  }
   handleConnection(client: Socket) {
-    this.logger.log(`客户端连接: ${client.id}`);
+    const actor = client.data.actor as SocketActor;
+    this.expiry.set(client.id, setTimeout(() => client.disconnect(true), Math.min(actor.expiresAt - Date.now(), 2147483647)));
+    client.use(async (_packet, next) => {
+      try { await this.policy.assertCurrent(actor); next(); }
+      catch { next(new Error('UNAUTHORIZED')); client.disconnect(true); }
+    });
   }
-
   handleDisconnect(client: Socket) {
-    this.logger.log(`客户端断开: ${client.id}`);
+    clearTimeout(this.expiry.get(client.id));
+    this.expiry.delete(client.id);
   }
-
+  onApplicationShutdown() {
+    for (const timer of this.expiry.values()) clearTimeout(timer);
+    this.expiry.clear();
+  }
+  @SubscribeMessage('subscribe')
+  async subscribe(@ConnectedSocket() client: Socket, @MessageBody() data: unknown) {
+    const topics = ['machines', 'tickets', 'orders', 'notifications'];
+    if (!data || typeof data !== 'object' || Array.isArray(data) || Object.keys(data).length !== 1 || !topics.includes((data as any).topic)) {
+      return { ok: false, error: 'INVALID_SUBSCRIPTION' };
+    }
+    const topic = (data as { topic: SocketTopic }).topic;
+    const room = this.policy.room(client.data.actor, topic);
+    if (!room) return { ok: false, error: 'FORBIDDEN' };
+    await client.join(room);
+    return { ok: true, topic };
+  }
   @SubscribeMessage('heartbeat')
-  handleHeartbeat(@ConnectedSocket() client: Socket, @MessageBody() data: any) {
-    // 处理心跳数据
-    this.logger.debug(`收到心跳: ${data.machine_id}`);
+  heartbeat(@ConnectedSocket() client: Socket) {
     client.emit('heartbeat_ack', { timestamp: new Date() });
-
-    // Device liveness is separate from billable occupancy. Only business services publish seat status.
+    return { ok: true };
   }
-
   @SubscribeMessage('fault_alert')
-  handleFaultAlert(@ConnectedSocket() client: Socket, @MessageBody() data: any) {
-    // Unauthenticated sockets may not create operational alerts. Use the authenticated HTTP API.
-    client.emit('device_error', { message: '请通过已认证接口上报故障' });
+  faultAlert(@ConnectedSocket() client: Socket) {
+    client.emit('device_error', { message: '请通过已认证HTTP接口上报故障' });
+    return { ok: false, error: 'HTTP_API_REQUIRED' };
   }
-
-  // 广播机器状态更新
-  broadcastMachineUpdate(machineId: string, status: string) {
-    this.server?.emit('machine_status_update', {
-      machine_id: machineId,
-      status,
-      timestamp: new Date(),
-    });
+  private async publish(room: string, event: string, payload: unknown) {
+    if (!this.server) return;
+    const clients = await this.server.in(room).fetchSockets();
+    await Promise.all(clients.map(async client => {
+      try { await this.policy.assertCurrent(client.data.actor); client.emit(event, payload); }
+      catch { client.disconnect(true); }
+    }));
   }
-
-  // 广播故障工单更新
-  broadcastTicketUpdate(ticketId: string, updates: any) {
-    this.server?.emit('ticket_update', {
-      id: ticketId,
-      updates,
-      timestamp: new Date(),
-    });
+  async broadcastMachineUpdate(machineId: string, status: string) {
+    try { await this.publish('machines', 'machine_status_update', { machine_id: machineId, status, timestamp: new Date() }); }
+    catch { /* HTTP state remains authoritative if delivery fails. */ }
   }
-
-  // 发送告警给指定客户端
-  sendAlertToClient(clientId: string, alert: any) {
-    this.server.to(clientId).emit('new_alert', alert);
+  async broadcastTicketUpdate(ticketId: string, updates: unknown) {
+    try {
+      const ticket = await this.source.getRepository(FaultTicket).findOneBy({ id: ticketId });
+      if (!ticket) return;
+      const payload = { id: ticketId, updates, timestamp: new Date() };
+      await this.publish('staff:tickets', 'ticket_update', payload);
+      if (ticket.reporterType === 'player' && Number.isSafeInteger(ticket.reporterId) && ticket.reporterId > 0) {
+        await this.publish(`customer:${ticket.reporterId}:tickets`, 'ticket_update', payload);
+      }
+    } catch { /* Reconnect recovery is implemented separately. */ }
   }
-
-  // 广播通知给所有客户端
-  broadcastNotification(notification: any) {
-    this.server?.emit('notification', notification);
+  async broadcastTicketCreated(ticketId: string) {
+    try {
+      const ticket = await this.source.getRepository(FaultTicket).findOneBy({ id: ticketId });
+      if (!ticket) return;
+      // Existing admin clients insert full new_alert snapshots into the ticket list.
+      await this.publish('staff:tickets', 'new_alert', ticket);
+      if (ticket.reporterType === 'player' && Number.isSafeInteger(ticket.reporterId) && ticket.reporterId > 0) {
+        await this.publish(`customer:${ticket.reporterId}:tickets`, 'ticket_update', { id: ticket.id, updates: ticket, timestamp: new Date() });
+      }
+    } catch { /* A delivery failure must not turn a committed report into an HTTP failure. */ }
+  }
+  async sendAlertToClient(clientId: string, alert: unknown) {
+    const client = this.server?.sockets.sockets.get(clientId);
+    if (!client || !this.policy.room(client.data.actor, 'tickets')?.startsWith('staff:')) return;
+    try { await this.publish(clientId, 'new_alert', alert); } catch {}
+  }
+  async broadcastNotification(notification: unknown) {
+    try { await this.publish('staff:notifications', 'notification', notification); } catch {}
   }
 }

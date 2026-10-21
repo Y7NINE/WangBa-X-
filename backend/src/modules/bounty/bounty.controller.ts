@@ -1,11 +1,15 @@
-import { Controller, Get, Post, Param, UseGuards, Request } from '@nestjs/common';
+import { Body, Controller, Get, Post, Param, UseGuards, Request } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { BountyService } from './bounty.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
+import { EmptyActionDto } from '../../common/empty-action.dto';
 
 @ApiTags('悬赏任务')
 @Controller('bounty')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('customer')
 @ApiBearerAuth()
 export class BountyController {
   constructor(private bountyService: BountyService) {}
@@ -30,7 +34,7 @@ export class BountyController {
 
   @Post('tasks/:id/claim')
   @ApiOperation({ summary: '领取奖励' })
-  claimReward(@Param('id') taskId: string, @Request() req) {
+  claimReward(@Param('id') taskId: string, @Body() _data: EmptyActionDto, @Request() req) {
     return this.bountyService.claimReward(req.user.id, taskId);
   }
 }

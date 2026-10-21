@@ -44,7 +44,7 @@
       <div class="session-row">
         <span class="label">状态</span>
         <el-tag size="small" :type="userStore.currentSession.status === 'active' ? 'success' : 'warning'">
-          {{ userStore.currentSession.status === 'active' ? '使用中' : '已暂停' }}
+          {{ userStore.currentSession.settlementRequestedAt ? '待结算（已停计费）' : userStore.currentSession.status === 'active' ? '使用中' : '已暂停' }}
         </el-tag>
       </div>
       <div class="session-row">
@@ -52,7 +52,7 @@
         <span class="value amount">¥{{ userStore.currentSession.amount || 0 }}</span>
       </div>
       <el-button type="danger" style="width: 100%; margin-top: 12px" @click="handleEndSession">
-        下机结算
+        {{ userStore.currentSession.settlementRequestedAt ? '补款后重试结算' : '下机结算' }}
       </el-button>
     </div>
 
@@ -78,7 +78,7 @@
         <el-icon><ArrowRight /></el-icon>
       </div>
     </div>
-    <section class="record-section"><header><h3>{{ recordTab === 'sessions' ? '上机记录' : '消费与充值记录' }}</h3><button @click="recordTab = recordTab === 'sessions' ? 'transactions' : 'sessions'; loadRecords()">{{ recordTab === 'sessions' ? '查看流水' : '查看上机' }}</button></header><p v-if="recordsError" class="record-note" role="alert">{{ recordsError }}</p><p v-else-if="!records.length" class="record-note">暂无记录。</p><article v-for="record in records" :key="record.id"><header><strong>{{ recordTab === 'sessions' ? record.machineId : record.description }}</strong><span>{{ recordTab === 'sessions' && record.status !== 'completed' ? '未结算' : `¥${Number(record.amount).toFixed(2)}` }}</span></header><small>{{ formatTime(record.startTime || record.createdAt) }} · {{ recordTab === 'sessions' ? (record.status === 'completed' ? '已结算' : record.status === 'paused' ? '暂停中' : '进行中') : `余额 ¥${Number(record.balanceAfter).toFixed(2)}` }}</small></article></section>
+    <section class="record-section"><header><h3>{{ recordTab === 'sessions' ? '上机记录' : '消费与充值记录' }}</h3><button @click="recordTab = recordTab === 'sessions' ? 'transactions' : 'sessions'; loadRecords()">{{ recordTab === 'sessions' ? '查看流水' : '查看上机' }}</button></header><p v-if="recordsError" class="record-note" role="alert">{{ recordsError }}</p><p v-else-if="!records.length" class="record-note">暂无记录。</p><article v-for="record in records" :key="record.id"><header><strong>{{ recordTab === 'sessions' ? record.machineId : record.description }}</strong><span>{{ recordTab === 'sessions' && record.status !== 'completed' ? '未结算' : `¥${Number(record.amount).toFixed(2)}` }}</span></header><small>{{ formatTime(record.startTime || record.createdAt) }} · {{ recordTab === 'sessions' ? (record.status === 'completed' ? '已结算' : record.settlementRequestedAt ? '待结算（已停计费）' : record.status === 'paused' ? '暂停中' : '进行中') : `余额 ¥${Number(record.balanceAfter).toFixed(2)}` }}</small></article></section>
   </div>
 </template>
 
@@ -127,7 +127,7 @@ const formatTime = (t?: string) => {
 const handleEndSession = async () => {
   if (!userStore.currentSession) return
   try {
-    await ElMessageBox.confirm('确定下机并结算？', '确认')
+    await ElMessageBox.confirm('确定停止使用并结算？余额不足时账单固定并停止计费，请到前台补款后重试结算，期间座位仍保留占用。', '确认')
     const r = await userStore.endCurrentSession()
     ElMessage.success(`结算 ¥${r?.amount ?? 0}`)
     loadRecords()
